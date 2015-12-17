@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<rulesets>
+  
+  <!-- RULESET COMBINATIONS -->
+
+  <!-- default -->
+  <ruleset active="y" name="browse_min" condition="protos:browse_min">
+    <rule active="y" ruleset="icmp" />
+    <rule active="y" ruleset="dns" />
+    <rule active="y" ruleset="local" />
+    <rule active="y" ruleset="https" />
+  </ruleset>
+
+  <!-- work -->
+  <ruleset active="y" name="browse_route" condition="protos:browse_route">
+    <rule active="y" ruleset="icmp" />
+    <rule active="y" ruleset="dns" />
+    <rule active="y" ruleset="local" />
+    <rule active="y" ruleset="https" />
+    <rule active="y" ruleset="sshsnet" />
+    <rule active="y" ruleset="route" />
+  </ruleset>
+
+  <!-- mail -->
+  <ruleset active="y" name="browse_mail" condition="protos:browse_mail">
+    <rule active="y" ruleset="icmp" />
+    <rule active="y" ruleset="dns" />
+    <rule active="y" ruleset="local" />
+    <rule active="y" ruleset="https" />
+    <rule active="y" ruleset="web.de" />
+  </ruleset>
+
+  <!-- TESTS -->
+
+  <!-- check chain builds -->
+  <ruleset active="y" name="c_cbuilds">
+    <rule active="y" table="nat" chain="input-a-b-c-d-e-f" target="ACCEPT" />
+    <rule active="y" table="nat" chain="OUTPUT" target="ACCEPT" />
+  </ruleset>
+
+  <!-- TOOLS -->
+
+  <!-- dhcp,dhclient -->
+  <ruleset active="y" name="dhcp" condition="option:dhcp">
+    <rule active="y"
+          chain="INPUT" if-in="wlan0" protocol="udp" 
+          sports="67,68" 
+          state="ESTABLISHED" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [DHCLIENT IN]:" />
+    <rule active="y"
+          chain="OUTPUT" if-out="wlan0" protocol="udp" 
+          dports="67,68"
+          state="NEW,ESTABLISHED" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [DHCLIENT OUT]:" />
+  </ruleset>
+
+  <!-- pasvftp -->
+  <!-- git -->
+  <!-- proxy -->
+
+  <!-- gmail -->
+  <ruleset active="y" name="gmail">
+    <rule active="y" chain="INPUT" protocol="tcp" if-in="wlan0"
+          destination="192.168.2.105/32" source="74.125.136.108/32,74.125.136.109/32,173.194.65.108/32,173.194.65.109/32" 
+          sports="993,587" state="ESTABLISHED" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [GMAIL IN]: " />
+    <rule active="y" chain="OUTPUT" protocol="tcp" if-out="wlan0"
+          source="192.168.2.105/32" destination="74.125.136.108/32,74.125.136.109/32,173.194.65.108/32,173.194.65.109/32" 
+          dports="993,587" state="NEW,ESTABLISHED" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [GMAIL OUT]: " />
+  </ruleset>
+ 
+  <!-- web.de -->
+  <ruleset active="y" name="web.de">
+    <rule active="y" chain="INPUT" protocol="tcp" if-in="wlan0"
+          destination="192.168.2.105/32" source="212.227.17.162/32,212.227.17.178/32,213.165.67.108/32,213.165.67.124/32" 
+          sports="993,587" state="ESTABLISHED" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [WEB.DE IN]: " />
+    <rule active="y" chain="OUTPUT" protocol="tcp" if-out="wlan0"
+          source="192.168.2.105/32" destination="212.227.17.162/32,212.227.17.178/32,213.165.67.108/32,213.165.67.124/32" 
+          dports="993,587" state="NEW,ESTABLISHED" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [WEB.DE OUT]: " />
+  </ruleset>
+
+  <!-- virenv -->
+  <!-- tap+ - icmp,http/s,ssh -->
+  <ruleset active="y" name="virenv">
+    <rule active="y" chain="INPUT" protocol="tcp" if-in="tap+"
+          source="192.168.2.0/24" destination="192.168.2.0/24" 
+          sports="80,443,22" state="ESTABLISHED" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [VIRENV IN]: " />
+    <rule active="y" chain="INPUT" protocol="tcp" if-in="tap+"
+          source="192.168.2.0/24" destination="192.168.2.0/24" 
+          dports="80,443,22" state="NEW,ESTABLISHED" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [VIRENV IN]: " />
+    <rule active="y" chain="OUTPUT" protocol="tcp" if-out="tap+"
+          source="192.168.2.0/24" destination="192.168.2.0/24" 
+          dports="80,443,22" state="NEW,ESTABLISHED" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [VIRENV OUT]: " />
+    <rule active="y" chain="OUTPUT" protocol="tcp" if-out="tap+"
+          source="192.168.2.0/24" destination="192.168.2.0/24" 
+          sports="80,443,22" state="ESTABLISHED" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [VIRENV OUT]: " />
+    <rule active="y" chain="FORWARD" protocol="tcp" if-out="tap+" if-in="tap+"
+          source="192.168.2.0/24" destination="192.168.2.0/24" 
+          dports="80,443,22" state="NEW,ESTABLISHED" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [VIRENV FWD OUT]: " />
+    <rule active="y" chain="FORWARD" protocol="tcp" if-out="tap+" if-in="tap+"
+          source="192.168.2.0/24" destination="192.168.2.0/24" 
+          sports="80,443,22" state="NEW,ESTABLISHED" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [VIRENV FWD IN]: " />
+    <rule active="y" chain="OUTPUT" protocol="icmp" if-out="tap+"
+          source="192.168.2.0/24" destination="192.168.2.0/24" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [VICMP TAP IN ]: " />
+    <rule active="y" chain="INPUT" protocol="icmp" if-in="tap+"
+          source="192.168.2.0/24" destination="192.168.2.0/24" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [VICMP TAP IN ]: " />
+    <rule active="y" chain="FORWARD" protocol="icmp" if-in="tap+" if-out="tap+"
+          source="192.168.2.0/24" destination="192.168.2.0/24" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [VICMP TAP IN ]: " />
+  </ruleset>
+
+  <!-- etherwake subnets -->
+  
+  <!-- PURE -->
+
+  <!-- invalids -->
+  <ruleset active="y" name="invalid">
+    <rule active="y" chain="INPUT" state="INVALID" target="DROP" 
+          log="y" log-level="debug" log-prefix="iptables: [INV IN]:" />
+    <rule active="y" chain="OUTPUT" state="INVALID" target="DROP" 
+          log="y" log-level="debug" log-prefix="iptables: [INV OUT]:" />
+    <rule active="y" chain="FORWARD" state="INVALID" target="DROP" 
+          log="y" log-level="debug" log-prefix="iptables: [INV FWD]:" />
+  </ruleset>
+
+  <!-- icmp -->
+  <ruleset active="y" name="icmp">
+    <rule active="y"
+          chain="INPUT" protocol="icmp" 
+          source="192.168.0.0/16,172.16.0.0/16,10.0.0.0/8,127.0.0.0/8" 
+          destination="192.168.0.0/16,172.16.0.0/16,10.0.0.0/8,127.0.0.0/8" 
+          target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [ICMP IN]:" />
+    <rule active="y"
+          chain="OUTPUT" protocol="icmp" 
+          source="192.168.0.0/16,172.16.0.0/16,10.0.0.0/8,127.0.0.0/8" 
+          destination="192.168.0.0/16,172.16.0.0/16,10.0.0.0/8,127.0.0.0/8" 
+          target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [ICMP OUT]:" />
+  </ruleset>
+
+  <!-- dns -->
+  <ruleset active="y" name="dns">
+    <rule active="y"
+          chain="INPUT" protocol="udp" if-in="wlan0" 
+          destination="192.168.2.105/32"
+          sports="53" state="ESTABLISHED" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [DNS IN]:" />
+    <rule active="y"
+          chain="OUTPUT" protocol="udp" if-out="wlan0" 
+          source="192.168.2.105/32"
+          dports="53" state="NEW,ESTABLISHED" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [DNS OUT]:" />
+  </ruleset>
+
+  <!-- https -->
+  <ruleset active="y" name="https">
+    <rule active="y"
+          chain="INPUT" protocol="tcp" if-in="wlan0" 
+          destination="192.168.2.105/32"
+          sports="80,443" state="ESTABLISHED" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [HTTPS IN]:" />
+    <rule active="y"
+          chain="OUTPUT" protocol="tcp" if-out="wlan0" 
+          source="192.168.2.105/32"
+          dports="80,443" state="NEW,ESTABLISHED" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [HTTPS OUT]:" />
+  </ruleset>
+
+  <!-- sshsnet -->
+  <ruleset active="y" name="sshsnet">
+    <rule active="y" chain="INPUT" protocol="tcp" if-in="wlan0" 
+          destination="192.168.2.105/32" source="192.168.2.0/24"
+          sports="22" state="ESTABLISHED" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [SSH SNET IN]:" />
+    <rule active="y" chain="OUTPUT" protocol="tcp" if-out="wlan0" 
+          destination="192.168.2.0/24" source="192.168.2.105/32"
+          dports="22" state="NEW,ESTABLISHED" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [SSH SNET OUT]:" />
+  </ruleset>
+
+  <!-- local -->
+  <!-- for ssh,ssh+svn,cups,https -->
+  <ruleset active="y" name="local">
+    <rule active="y" chain="INPUT" protocol="tcp" if-in="lo" 
+          atype="LOCAL:LOCAL" state="NEW,ESTABLISHED" target="ACCEPT"
+          log="y" log-level="debug" log-prefix="iptables: [LOCAL IN]: " />
+    <rule active="y" chain="OUTPUT" protocol="tcp" if-out="lo" 
+          atype="LOCAL:LOCAL" state="NEW,ESTABLISHED" target="ACCEPT"
+          log="y" log-level="debug" log-prefix="iptables: [LOCAL OUT]: " />
+  </ruleset>
+
+  <!-- pnets -->
+
+  <!-- forward/route -->
+  <ruleset active="y" name="route">
+    <rule active="y" table="nat" chain="POSTROUTING" 
+          if-out="wlan0" source="192.168.178.7/32" 
+          state="NEW,ESTABLISHED" target="MASQUERADE"
+          log="y" log-level="debug" log-prefix="iptables: [RT ETH0 MASQ]:" />
+    <rule active="y" chain="FORWARD" if-in="eth0" if-out="wlan0" 
+          destination="0.0.0.0/0" source="192.168.0.0/16" 
+          state="NEW,ESTABLISHED" target="ACCEPT"
+          log="y" log-level="debug" log-prefix="iptables: [RT ETH0 FWDI]:" />
+    <rule active="y" chain="FORWARD" if-in="wlan0" if-out="eth0" 
+          source="0.0.0.0/0" destination="192.168.0.0/16" 
+          state="ESTABLISHED" target="ACCEPT"
+          log="y" log-level="debug" log-prefix="iptables: [RT ETH0 FWDO]:" />
+    <rule active="y" chain="OUTPUT" if-out="eth0"
+          source="192.168.178.10/32" destination="192.168.0.0/16" 
+          state="NEW,ESTABLISHED" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [RT ETH0 OUT]:" />
+    <rule active="y" chain="INPUT" if-in="eth0"
+          destination="192.168.178.10/32" source="192.168.0.0/16" 
+          state="ESTABLISHED" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [RT ETH0 IN]:" />
+  </ruleset>
+
+  <!-- remoteweb -->
+
+  <!-- HU -->
+
+  <!-- ldaphu -->
+  <!-- huvpn -->
+  <!-- hussh -->
+  <!-- humail -->
+  <ruleset active="n" name="humail">
+    <rule active="n" />
+  </ruleset>
+
+  <!-- GAMES -->
+
+  <!-- wodde -->
+  <!-- wodcom -->
+  <!-- wodpl -->
+  <!-- kings -->
+  <!-- origin -->
+  <!-- git -->
+  <!-- gpghkp -->
+  <!-- eosgame -->
+  <!-- steam -->
+  <!-- regnum -->
+  <!-- minecraft -->
+  <!-- mutant -->
+  <!-- openarena -->
+  <ruleset active="y" name="oarena">
+    <rule active="y"
+          chain="INPUT" protocol="udp" if-in="wlan0" 
+          source="107.161.23.68/32" destination="192.168.2.105/32"
+          sports="27950" state="ESTABLISHED" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [OARENA IN]:" />
+    <rule active="y"
+          chain="OUTPUT" protocol="udp" if-out="wlan0" 
+          destination="107.161.23.68/32" source="192.168.2.105/32"
+          dports="27950" state="NEW,ESTABLISHED" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [OARENA OUT]:" />
+  </ruleset>
+  
+
+  <!-- OTHERS -->
+
+  <!-- log_others -->
+  <ruleset active="y" name="log_others">
+    <rule active="y" chain="INPUT" target="" 
+          log="y" log-level="debug" log-prefix="iptables: [OTHER IN]:" />
+    <rule active="y" chain="OUTPUT" target="" 
+          log="y" log-level="debug" log-prefix="iptables: [OTHER OUT]:" />
+    <rule active="y" chain="FORWARD" target="" 
+          log="y" log-level="debug" log-prefix="iptables: [OTHER FWD]:" />
+  </ruleset>
+
+  <!-- reject -->
+  <ruleset active="y" name="reject">
+    <rule active="y" chain="INPUT" target="REJECT" log="n"/>
+    <rule active="y" chain="OUTPUT" target="REJECT" log="n" />
+    <rule active="y" chain="FORWARD" target="REJECT" log="n" />
+  </ruleset>
+
+  <!-- all -->
+
+</rulesets>
+

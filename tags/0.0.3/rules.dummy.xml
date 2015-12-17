@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<rulesets>
+  
+  <!-- RULESET COMBINATIONS -->
+
+  <!-- default -->
+  <ruleset active="y" name="default" condition="protos:default">
+    <rule active="y" ruleset="icmp" />
+    <rule active="y" ruleset="dns" />
+    <rule active="y" ruleset="local" />
+    <rule active="y" ruleset="https" />
+    <rule active="y" ruleset="sshsnet" />
+    <rule active="y" ruleset="route" />
+  </ruleset>
+
+  <!-- TESTS -->
+
+  <!-- check chain builds -->
+  <ruleset active="y" name="c_cbuilds">
+    <rule active="y" table="nat" chain="input-a-b-c-d-e-f" target="ACCEPT" />
+    <rule active="y" table="nat" chain="OUTPUT" target="ACCEPT" />
+  </ruleset>
+
+  <!-- TOOLS -->
+
+  <!-- dhcp,dhclient -->
+  <ruleset active="y" name="dhcp" condition="option:dhcp">
+    <rule active="y"
+          chain="INPUT" if-in="wlan0" protocol="udp" 
+          sports="67,68" 
+          state="ESTABLISHED" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [DHCLIENT IN]:" />
+    <rule active="y"
+          chain="OUTPUT" if-out="wlan0" protocol="udp" 
+          dports="67,68"
+          state="NEW,ESTABLISHED" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [DHCLIENT OUT]:" />
+  </ruleset>
+
+  <!-- gmail -->
+  <ruleset active="y" name="gmail">
+    <rule active="y" chain="INPUT" protocol="tcp" if-in="wlan0"
+          destination="10.0.0.10/32" source="74.125.136.108/32,74.125.136.109/32,173.194.65.108/32,173.194.65.109/32" 
+          sports="993,587" state="ESTABLISHED" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [GMAIL IN]: " />
+    <rule active="y" chain="OUTPUT" protocol="tcp" if-out="wlan0"
+          source="10.0.0.10/32" destination="74.125.136.108/32,74.125.136.109/32,173.194.65.108/32,173.194.65.109/32" 
+          dports="993,587" state="NEW,ESTABLISHED" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [GMAIL OUT]: " />
+  </ruleset>
+ 
+  <!-- PURE -->
+
+  <!-- invalids -->
+  <ruleset active="y" name="invalid">
+    <rule active="y" chain="INPUT" state="INVALID" target="DROP" 
+          log="y" log-level="debug" log-prefix="iptables: [INV IN]:" />
+    <rule active="y" chain="OUTPUT" state="INVALID" target="DROP" 
+          log="y" log-level="debug" log-prefix="iptables: [INV OUT]:" />
+    <rule active="y" chain="FORWARD" state="INVALID" target="DROP" 
+          log="y" log-level="debug" log-prefix="iptables: [INV FWD]:" />
+  </ruleset>
+
+  <!-- icmp -->
+  <ruleset active="y" name="icmp">
+    <rule active="y"
+          chain="INPUT" protocol="icmp" 
+          source="10.0.0.0/8" destination="10.0.0.0/8" 
+          target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [ICMP IN]:" />
+    <rule active="y"
+          chain="OUTPUT" protocol="icmp" 
+          source="10.0.0.0/8" destination="10.0.0.0/8" 
+          target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [ICMP OUT]:" />
+  </ruleset>
+
+  <!-- dns -->
+  <ruleset active="y" name="dns">
+    <rule active="y"
+          chain="INPUT" protocol="udp" if-in="wlan0" 
+          destination="10.0.0.10/32"
+          sports="53" state="ESTABLISHED" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [DNS IN]:" />
+    <rule active="y"
+          chain="OUTPUT" protocol="udp" if-out="wlan0" 
+          source="10.0.0.10/32"
+          dports="53" state="NEW,ESTABLISHED" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [DNS OUT]:" />
+  </ruleset>
+
+  <!-- https -->
+  <ruleset active="y" name="https">
+    <rule active="y"
+          chain="INPUT" protocol="tcp" if-in="wlan0" 
+          destination="10.0.0.10/32"
+          sports="80,443" state="ESTABLISHED" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [HTTPS IN]:" />
+    <rule active="y"
+          chain="OUTPUT" protocol="tcp" if-out="wlan0" 
+          source="10.0.0.10/32"
+          dports="80,443" state="NEW,ESTABLISHED" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [HTTPS OUT]:" />
+  </ruleset>
+
+  <!-- local -->
+  <ruleset active="y" name="local">
+    <rule active="y" chain="INPUT" protocol="tcp" if-in="lo" 
+          atype="LOCAL:LOCAL" state="NEW,ESTABLISHED" target="ACCEPT"
+          log="y" log-level="debug" log-prefix="iptables: [LOCAL IN]: " />
+    <rule active="y" chain="OUTPUT" protocol="tcp" if-out="lo" 
+          atype="LOCAL:LOCAL" state="NEW,ESTABLISHED" target="ACCEPT"
+          log="y" log-level="debug" log-prefix="iptables: [LOCAL OUT]: " />
+  </ruleset>
+
+  <!-- forward/route -->
+  <ruleset active="y" name="route">
+    <rule active="y" table="nat" chain="POSTROUTING" 
+          if-out="wlan0" source="10.0.0.7/32" 
+          state="NEW,ESTABLISHED" target="MASQUERADE"
+          log="y" log-level="debug" log-prefix="iptables: [RT ETH0 MASQ]:" />
+    <rule active="y" chain="FORWARD" if-in="eth0" if-out="wlan0" 
+          destination="0.0.0.0/0" source="10.0.0.0/8" 
+          state="NEW,ESTABLISHED" target="ACCEPT"
+          log="y" log-level="debug" log-prefix="iptables: [RT ETH0 FWDI]:" />
+    <rule active="y" chain="FORWARD" if-in="wlan0" if-out="eth0" 
+          source="0.0.0.0/0" destination="10.0.0.0/8" 
+          state="ESTABLISHED" target="ACCEPT"
+          log="y" log-level="debug" log-prefix="iptables: [RT ETH0 FWDO]:" />
+    <rule active="y" chain="OUTPUT" if-out="eth0"
+          source="10.0.0.8/32" destination="10.0.0.0/8" 
+          state="NEW,ESTABLISHED" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [RT ETH0 OUT]:" />
+    <rule active="y" chain="INPUT" if-in="eth0"
+          destination="10.0.0.8/32" source="10.0.0.0/8" 
+          state="ESTABLISHED" target="ACCEPT" 
+          log="y" log-level="debug" log-prefix="iptables: [RT ETH0 IN]:" />
+  </ruleset>
+
+  <!-- OTHERS -->
+
+  <!-- log_others -->
+  <ruleset active="y" name="log_others">
+    <rule active="y" chain="INPUT" target="" 
+          log="y" log-level="debug" log-prefix="iptables: [OTHER IN]:" />
+    <rule active="y" chain="OUTPUT" target="" 
+          log="y" log-level="debug" log-prefix="iptables: [OTHER OUT]:" />
+    <rule active="y" chain="FORWARD" target="" 
+          log="y" log-level="debug" log-prefix="iptables: [OTHER FWD]:" />
+  </ruleset>
+
+  <!-- reject -->
+  <ruleset active="y" name="reject">
+    <rule active="y" chain="INPUT" target="REJECT" log="n"/>
+    <rule active="y" chain="OUTPUT" target="REJECT" log="n" />
+    <rule active="y" chain="FORWARD" target="REJECT" log="n" />
+  </ruleset>
+
+  <!-- all -->
+
+</rulesets>
+

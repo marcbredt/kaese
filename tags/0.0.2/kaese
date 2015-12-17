@@ -1,0 +1,315 @@
+#!/bin/bash
+
+set +x
+
+option="${1}"
+iface="${2}"
+nint="${3}"
+protos="${4}"
+rules="${5}"
+
+IPTABLES="/sbin/iptables"
+
+usage(){
+	local possibles=$(/usr/bin/xmllint \
+                            --xpath '//ruleset[@active="y"]/@name' "${rules}" | \
+                          /usr/bin/tr ' ' '\n' | /bin/grep -shoP "\".*\"" | \
+                          /usr/bin/cut -d'"' -f2 | /usr/bin/tr '[\r\n]' ' ')
+        echo ${possibles}
+
+	echo "USAGE:   ./${0##*/} OPTION IFACE NINT             FUNCTION     RULESFILE"
+        echo
+	echo "EXAMPLE: ./${0##*/} '' '' '' '' rules.xml"
+	echo "EXAMPLE: ./${0##*/} dhcp wlan0 wlan0-swh-dhcp '' rules.xml"
+	echo "EXAMPLE: ./${0##*/} dhcp wlan0 wlan0-swh-dhcp '' rules.xml"
+        for p in ${possibles}; do
+	  echo "EXAMPLE: ./${0##*/} static wlan0 wlan0-swh-static ${p} rules.xml"
+        done
+}
+
+flush_rules(){
+	for r in $(${IPTABLES} -t filter --list -nv | /bin/grep Chain | /usr/bin/cut -d' ' -f2); do 
+		${IPTABLES} -t filter -F ${r}
+	done
+	for r in $(${IPTABLES} -t nat --list -nv | /bin/grep Chain | /usr/bin/cut -d' ' -f2); do 
+		${IPTABLES} -t nat -F ${r}
+	done
+}
+
+delete_chains(){
+	for r in $(${IPTABLES} -t filter --list -nv | /bin/grep Chain | /bin/grep -v "INPUT\|OUTPUT\|FORWARD" | /usr/bin/cut -d' ' -f2); do 
+		${IPTABLES} -t filter -X ${r}
+	done
+	for r in $(${IPTABLES} -t nat --list -nv | /bin/grep Chain | /bin/grep -v "INPUT\|OUTPUT\|FORWARD\|PREROUTING\|POSTROUTING" | /usr/bin/cut -d' ' -f2); do 
+		${IPTABLES} -t nat -X ${r}
+	done
+}
+
+# create chains, used to auto create chains by prefix
+create_chains(){
+  echo "NYI"
+
+  # auto create chain and auto pin by chain name prefix        
+  #
+  # each prefix delimited by - is going to be a chain
+  # the first prefix defines where to put the following chains
+  # e.g. input-ssh-uni and input-ssh-work will create 
+  #      the folowing tree structure
+  #
+  #      INPUT
+  #      + input-ssh
+  #        + input-ssh-work
+  #          > RULE 1
+  #             ...
+  #          > RULE n
+  #        + input-ssh-uni
+  #          > RULE 1
+  #             ...
+  #          > RULE m
+
+}
+
+reset(){
+	# flush and delete iptables chains
+	flush_rules; delete_chains
+	# bring down interface
+	/sbin/ifdown -v ${iface}=${nint}
+	# quit
+	exit
+}
+
+getip(){
+  local iface=${1}
+  /sbin/ip addr show ${iface} | /bin/grep "inet " | /usr/bin/cut -d' ' -f6 | /usr/bin/cut -d'/' -f1
+}
+
+# function to set rule
+# interface not necessary here as the interface can be set inside each rule
+set_rules() {
+
+  #TODO: <exec>-rules for executing commands after a set of rules
+  #      has been invoked -> run tools/openvpn after rules were setup
+
+  local protv=${1}
+  local ruleset=$(/usr/bin/xmllint --xpath '//ruleset[@active="y" and @name="'${protv}'"]' "${rules}" 2>/dev/null)
+  local rsn=$(echo ${ruleset} | /usr/bin/xmllint --xpath 'count(//rule)' - 2>/dev/null)
+  local rsc=$(echo ${ruleset} | /usr/bin/xmllint --xpath 'string(/ruleset/@condition)' - 2>/dev/null)
+  if [ "x${rsc}" != "x" ]; then eval "${rsc%%:*}_=${rsc##*:}"; fi
+  #echo "protv='${protv}', rs='${ruleset}', rsn='${rsn}', rsc='${rsc}'"
+
+  # for each rule, if the global value equals the conditional value   
+  if [ "${ruleset}" != "" ] && ( [ "x${rsc}" = "x" ] || \
+     ( [ "$(eval echo \${${rsc%%:*}_})" != "" ] && \
+       [[ "$(eval echo \${${rsc%%:*}})" =~ $(eval echo \${${rsc%%:*}_}) ]] )); then
+
+    echo -e "\nI: Setting up ruleset '${protv}' ..."
+
+    local i=
+    for i in $(/usr/bin/seq 1 1 ${rsn}); do 
+
+      # used to check if the rule points to another existing ruleset 
+      local rrs=$(echo ${ruleset} | /usr/bin/xmllint \
+                                      --xpath 'string(//rule['${i}'][@active="y"]/@ruleset)' \
+                                      - 2>/dev/null)
+      if [ "x${rrs}" = "x" ]; then
+
+        local rule=$(echo ${ruleset} | /usr/bin/xmllint --xpath '//rule['${i}'][@active="y"]' - 2>/dev/null)
+        #echo "i=${i}, rule=${rule}"
+        if [ "x${rule}" != "x" ]; then 
+      
+          #echo "i=${i}, rule=${rule}"
+
+          # get all atributes first 
+          local table=$(echo ${rule} | /usr/bin/xmllint --xpath 'string(//@table)' -)
+          local chain=$(echo ${rule} | /usr/bin/xmllint --xpath 'string(//@chain)' -)
+          local if_in=$(echo ${rule} | /usr/bin/xmllint --xpath 'string(//@if-in)' -)
+          local if_out=$(echo ${rule} | /usr/bin/xmllint --xpath 'string(//@if-out)' -)
+          local protocol=$(echo ${rule} | /usr/bin/xmllint --xpath 'string(//@protocol)' -)
+          local atype=$(echo ${rule} | /usr/bin/xmllint --xpath 'string(//@atype)' -)
+          local atype_src=${atype%%:*}; local atype_dst=${atype##*:}
+          local sources=$(echo ${rule} | /usr/bin/xmllint --xpath 'string(//@source)' -)
+          local destinations=$(echo ${rule} | /usr/bin/xmllint --xpath 'string(//@destination)' -)
+          local dports=$(echo ${rule} | /usr/bin/xmllint --xpath 'string(//@dports)' -)
+          local sports=$(echo ${rule} | /usr/bin/xmllint --xpath 'string(//@sports)' -)
+          local state=$(echo ${rule} | /usr/bin/xmllint --xpath 'string(//@state)' -)
+          local target=$(echo ${rule} | /usr/bin/xmllint --xpath 'string(//@target)' -)
+          local log=$(echo ${rule} | /usr/bin/xmllint --xpath 'string(//@log)' -)
+          local loglevel=$(echo ${rule} | /usr/bin/xmllint --xpath 'string(//@log-level)' -)
+          local logprefix=$(echo ${rule} | /usr/bin/xmllint --xpath 'string(//@log-prefix)' -)
+
+          #echo "c=${chain}, if=${interface}, p=${protocol}, ps=${ports}, s=${state}, t=${target}, l=${log}, ll=${loglevel}, lp=${logprefix}"
+
+          # create the main rule command
+          local cmd="${IPTABLES} "
+
+          if [ "x${table}" = "x" ]; then table="filter"; fi
+          cmd="${cmd} -t ${table} -A ${chain}"
+
+          #TODO: auto create chain and auto pin by chain name prefix        
+          #create_chains ${table} ${chain}
+
+          if [ "x${protocol}" != "x" ]; then cmd="${cmd} -p ${protocol}"; fi
+
+          if [ "x${if_in}" != "x" ]; then cmd="${cmd} -i ${if_in}"; fi
+          if [ "x${if_out}" != "x" ]; then cmd="${cmd} -o ${if_out}"; fi
+
+          if [ "x${atype}" != "x" ]; then cmd="${cmd} -m addrtype"; fi
+          if [ "x${atype_src}" != "x" ]; then cmd="${cmd} --src-type ${atype_src}"; fi
+          if [ "x${atype_dst}" != "x" ]; then cmd="${cmd} --dst-type ${atype_dst}"; fi
+
+          if [ "x${sources}" != "x" ]; then cmd="${cmd} --source ${sources}"; fi
+          if [ "x${destinations}" != "x" ]; then cmd="${cmd} --destination ${destinations}"; fi
+
+          if [ "x${sports}" != "x" ]; then cmd="${cmd} -m multiport --sports ${sports}"; fi
+          if [ "x${dports}" != "x" ]; then cmd="${cmd} -m multiport --dports ${dports}"; fi
+
+          if [ "x${state}" != "x" ]; then cmd="${cmd} -m state --state ${state}"; fi
+
+          # create log rule
+          local logcmd=
+          if [ "x${log}" = "xy" ]; then
+            logcmd="${cmd} -j LOG"
+            if [ "x${loglevel}" != "x" ]; then logcmd="${logcmd} --log-level ${loglevel}"; fi
+            if [ "x${logprefix}" != "x" ]; then logcmd="${logcmd} --log-prefix \"${logprefix}\""; fi
+          fi
+
+          # run the commands, but the filter command only if the target is set
+          if [ "x${logcmd}" != "x" ]; then 
+            echo ${logcmd}; eval ${logcmd}; fi
+
+          if [ "x${target}" != "x" ]; then 
+            if [[ "${target}" =~ SNAT ]]; then
+              cmd="${cmd} -j SNAT --to-source ${target##*:}"; 
+            elif [[ "${target}" =~ DNAT ]]; then
+              cmd="${cmd} -j DNAT --to-destination ${target##*:}"; 
+            else
+              cmd="${cmd} -j ${target}"; 
+            fi
+            echo ${cmd}; eval ${cmd}; 
+          fi
+       
+        fi
+
+      # if rule specifies another ruleset call this ruleset first
+      elif [ "x${rrs}" != "x" ]; then
+        set_rules ${rrs}
+
+      fi
+
+    done
+
+  fi  
+
+}
+
+exec_task(){
+  echo "NYI"
+}
+
+# argument checks
+
+# check argument amount
+if ! [ "${#}" -eq "5" ]; then 
+	/bin/echo "I: Beachte die Anzahl."; usage; exit 1; 
+# check argument option
+elif [ "${option}" != "static" -a "${option}" != "dhcp" -a "${option}" != "down" ]; then
+	/bin/echo "I: Komische Option."; usage; exit 1; 
+fi
+
+# check for existing network interface
+/sbin/ip addr show ${iface} 2>/dev/null
+if [ "${?}" != "0" ]; then /bin/echo "I: Network interface not found."; usage; exit 2; fi
+
+# set policy to drop 
+${IPTABLES} -P OUTPUT DROP
+${IPTABLES} -P INPUT DROP
+${IPTABLES} -P FORWARD DROP
+
+# bring iface down
+if [ "${option}" == "down" ]; then
+	reset
+fi
+
+# unset remaining interface protocol number 
+downip=$(getip ${iface})
+if [ "${downip}" != "" ]; then
+  /bin/echo "I: Removing existing ip."
+  /sbin/ip addr del ${downip} dev ${iface} 
+fi
+
+# disable ipv6 using sysctl
+if [ -f /proc/sys/net/ipv6/conf/all/disable_ipv6 ]; then 
+  /sbin/sysctl net.ipv6.conf.all.disable_ipv6=1 &>/dev/null
+  retipv6=$(echo $?)
+else
+  retipv6=0
+fi
+if [ "${retipv6}" != "0" ];  then
+  /bin/echo "I: Disabling IPv6 failed (${retipv6}). Quitting."
+  exit 8
+fi 
+
+# check for existing network interface configuration
+/bin/grep -q "${nint}.*${option}$" /etc/network/interfaces
+if [ "${?}" != "0" ]; then /bin/echo "I: Static network interface configuration not found."; usage; exit 3; fi
+
+# NOTE: control setup of rules via the 'condition' attribute for rulesets
+#       to avoid, e.g. rejection before rules for other interfaces were setup
+#       see used rules.xml <ruleset condition="SCRIPTVAR:VALUE">
+# setup rules for invalid packets
+set_rules "invalid"
+# setup rules for dhclient and get an ip
+set_rules "dhcp"
+
+# wake up iface
+/bin/grep -q "^iface\ ${nint}\ inet" /etc/network/interfaces
+ifavail="${?}"
+if [ "${ifavail}" == "1" ]; then /bin/echo "I: Interface ${nint} does not exist."; reset; exit 5; fi
+# destroy all remaining wpa_supplicant processes by ripping them
+/usr/bin/killall -s 9 wpa_supplicant
+/sbin/ifconfig ${iface} down
+/sbin/ifup -v ${iface}=${nint} || exit 7
+ret="${?}"
+ip="$(getip ${iface})"
+ret=$((${ret}+${?}))
+if [ "${ret}" != "0" ]; then 
+	# dhclient removals, remove latest inserted lines
+        l="$(${IPTABLES} -nv --line-numbers --list INTPUT | /usr/bin/awk 'END{print $1;}')"
+	${IPTABLES} -D INPUT ${l}
+        l="$((${l}-1))"
+	${IPTABLES} -D INPUT ${l}
+        l="$(${IPTABLES} -nv --line-numbers --list OUTPUT | /usr/bin/awk 'END{print $1;}')"
+	${IPTABLES} -D OUTPUT ${l}
+        l="$((${l}-1))"
+	${IPTABLES} -D OUTPUT ${l}
+	exit 4 
+fi
+
+# remove dhclient rules and stop dhclient
+if [ "${option}" == "dhcp" ]; then 
+	# dhclient removals
+        l="$(${IPTABLES} -nv --line-numbers --list INTPUT | /usr/bin/awk 'END{print $1;}')"
+	${IPTABLES} -D INPUT ${l}
+        l="$((${l}-1))"
+	${IPTABLES} -D INPUT ${l}
+        l="$(${IPTABLES} -nv --line-numbers --list OUTPUT | /usr/bin/awk 'END{print $1;}')"
+	${IPTABLES} -D OUTPUT ${l}
+        l="$((${l}-1))"
+	${IPTABLES} -D OUTPUT ${l}
+	/usr/bin/killall dhclient
+fi
+
+# setup defined rules for each proto provided
+for p in ${protos//,/ }; do
+  set_rules ${p}
+done 
+
+# log others and finally reject packets
+# NOTE: control setup of rules via the 'condition' attribute for rulesets
+#       to avoid, e.g. rejection before rules for other interfaces were setup
+#       see used rules.xml <ruleset condition="SCRIPTVAR:VALUE">
+# log all other packets
+set_rules "log_others"
+# and reject them
+set_rules "reject"
+
