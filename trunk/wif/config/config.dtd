@@ -1,0 +1,3 @@
+<!ELEMENT config (var*) >
+<!ELEMENT var (#PCDATA) >
+<!ATTLIST var name CDATA #REQUIRED>

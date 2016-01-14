@@ -39,10 +39,6 @@ rules="${5}"
 IPTABLES="/sbin/iptables"
 
 usage(){
-	#local possibles=$(/usr/bin/xmllint \
-        #                    --xpath '//ruleset[@active="y"]/@name' "${rules}" | \
-        #                  /usr/bin/tr ' ' '\n' | /bin/grep -shoP "\".*\"" | \
-        #                  /usr/bin/cut -d'"' -f2 | /usr/bin/tr '[\r\n]' ' ')
 	local possibles=$(/usr/bin/xmlstarlet select -t -m "//ruleset[@active='y']" \
                             -v "string(@name)" -n "${rules}" | \
                           /usr/bin/tr '[\r\n]' ' ')
@@ -59,21 +55,28 @@ usage(){
 }
 
 flush_rules(){
-	for r in $(${IPTABLES} -t filter --list -nv | /bin/grep Chain | /usr/bin/cut -d' ' -f2); do 
-		${IPTABLES} -t filter -F ${r}
-	done
-	for r in $(${IPTABLES} -t nat --list -nv | /bin/grep Chain | /usr/bin/cut -d' ' -f2); do 
-		${IPTABLES} -t nat -F ${r}
-	done
+  for r in $(${IPTABLES} -t filter --list -nv | /bin/grep Chain | \
+               /usr/bin/cut -d' ' -f2); do 
+    ${IPTABLES} -t filter -F ${r}
+  done
+  for r in $(${IPTABLES} -t nat --list -nv | /bin/grep Chain | \
+               /usr/bin/cut -d' ' -f2); do 
+    ${IPTABLES} -t nat -F ${r}
+  done
 }
 
 delete_chains(){
-	for r in $(${IPTABLES} -t filter --list -nv | /bin/grep Chain | /bin/grep -v "INPUT\|OUTPUT\|FORWARD" | /usr/bin/cut -d' ' -f2); do 
-		${IPTABLES} -t filter -X ${r}
-	done
-	for r in $(${IPTABLES} -t nat --list -nv | /bin/grep Chain | /bin/grep -v "INPUT\|OUTPUT\|FORWARD\|PREROUTING\|POSTROUTING" | /usr/bin/cut -d' ' -f2); do 
-		${IPTABLES} -t nat -X ${r}
-	done
+  for r in $(${IPTABLES} -t filter --list -nv | /bin/grep Chain | \
+                   /bin/grep -v "INPUT\|OUTPUT\|FORWARD" | \
+                   /usr/bin/cut -d' ' -f2); do 
+    ${IPTABLES} -t filter -X ${r}
+  done
+
+  for r in $(${IPTABLES} -t nat --list -nv | /bin/grep Chain | \
+               /bin/grep -v "INPUT\|OUTPUT\|FORWARD\|PREROUTING\|POSTROUTING" | \
+               /usr/bin/cut -d' ' -f2); do 
+    ${IPTABLES} -t nat -X ${r}
+  done
 }
 
 # create chains, used to auto create chains by prefix
@@ -109,8 +112,6 @@ create_chains(){
     local c="${childs%%-*}"
     local nc="${parent}-${c}"
 
-    #echo "p=${parent}, cs=${childs}, nc=${nc}, l=${level}"
-
     if ! ${IPTABLES} -nv -t ${table} --list ${nc} &>/dev/null; then
 
         # insert new chain and rule for target
@@ -137,12 +138,23 @@ create_chains(){
 }
 
 reset(){
-	# flush and delete iptables chains
-	flush_rules; delete_chains
-	# bring down interface
-	/sbin/ifdown -v ${iface}=${nint}
-	# quit
-	exit
+  # flush and delete iptables chains
+  flush_rules; delete_chains
+
+  # bring down interface
+  /usr/bin/killall -s 9 wpa_supplicant
+  /sbin/ifconfig ${iface} down
+  /sbin/ifdown -v ${iface}=${nint}
+
+  # remove marker for currently enabled active rulesets
+  # but as we modify protos during setup we should gather 
+  # the enabled ones first
+  for rse in $(/usr/bin/xmlstarlet select -t \
+                 -m "/rulesets/ruleset[@active='y' and @enabled='y']" \
+                 -v "string(@name)" -n "${rules}"); do
+    /usr/bin/xmlstarlet edit -L \
+      -d "/rulesets/ruleset[@name='${rse}']/@enabled" "${rules}"
+  done
 }
 
 getip(){
@@ -163,13 +175,10 @@ set_rules() {
   local rsn=
   local rsc=
   if [ "x${ruleset}" != "x" ]; then
-    #rsn=$(echo ${ruleset} | /usr/bin/xmllint --xpath 'count(//rule)' - 2>/dev/null)
     rsn=$(echo ${ruleset} | /usr/bin/xmlstarlet select -t -v "count(//rule)")
-    #rsc=$(echo ${ruleset} | /usr/bin/xmllint --xpath 'string(/ruleset/@condition)' - 2>/dev/null)
     rsc=$(echo ${ruleset} | /usr/bin/xmlstarlet select -t -v "/ruleset/@condition")
   fi
   if [ "x${rsc}" != "x" ]; then eval "${rsc%%:*}_=${rsc##*:}"; fi
-  #echo "protv='${protv}', rs='${ruleset}', rsn='${rsn}', rsc='${rsc}'"
 
   # for each rule, if the global value equals the conditional value   
   if [ "${ruleset}" != "" ] && ( [ "x${rsc}" = "x" ] || \
@@ -182,57 +191,33 @@ set_rules() {
     for i in $(/usr/bin/seq 1 1 ${rsn}); do 
 
       # used to check if the rule points to another existing ruleset 
-      #local rrs=$(echo ${ruleset} | /usr/bin/xmllint \
-      #                                --xpath 'string(//rule['${i}'][@active="y"]/@ruleset)' \
-      #                                - 2>/dev/null)
       local rrs=$(echo ${ruleset} | /usr/bin/xmlstarlet select -t \
                                       -v "/ruleset/rule[${i}][@active='y']/@ruleset")
 
       if [ "x${rrs}" = "x" ]; then
 
-        #local rule=$(echo ${ruleset} | /usr/bin/xmllint --xpath '//rule['${i}'][@active="y"]' - 2>/dev/null)
         local rule=$(echo ${ruleset} | /usr/bin/xmlstarlet select -t \
                                          -c "/ruleset/rule[${i}][@active='y']")
-        #echo "i=${i}, rule=${rule}"
         if [ "x${rule}" != "x" ]; then 
       
-          #echo "i=${i}, rule=${rule}"
-
           # get all atributes first 
-          #local table=$(echo ${rule} | /usr/bin/xmllint --xpath 'string(//@table)' -)
           local table=$(echo ${rule} | /usr/bin/xmlstarlet select -t -v "//@table")
           if [ "x${table}" = "x" ]; then table="filter"; fi
-          #local chain=$(echo ${rule} | /usr/bin/xmllint --xpath 'string(//@chain)' -)
           local chain=$(echo ${rule} | /usr/bin/xmlstarlet select -t -v "//@chain")
-          #local if_in=$(echo ${rule} | /usr/bin/xmllint --xpath 'string(//@if-in)' -)
           local if_in=$(echo ${rule} | /usr/bin/xmlstarlet select -t -v "//@if-in")
-          #local if_out=$(echo ${rule} | /usr/bin/xmllint --xpath 'string(//@if-out)' -)
           local if_out=$(echo ${rule} | /usr/bin/xmlstarlet select -t -v "//@if-out")
-          #local protocol=$(echo ${rule} | /usr/bin/xmllint --xpath 'string(//@protocol)' -)
           local protocol=$(echo ${rule} | /usr/bin/xmlstarlet select -t -v "//@protocol")
-          #local atype=$(echo ${rule} | /usr/bin/xmllint --xpath 'string(//@atype)' -)
           local atype=$(echo ${rule} | /usr/bin/xmlstarlet select -t -v "//@atype")
           local atype_src=${atype%%:*}; local atype_dst=${atype##*:}
-          #local sources=$(echo ${rule} | /usr/bin/xmllint --xpath 'string(//@source)' -)
           local sources=$(echo ${rule} | /usr/bin/xmlstarlet select -t -v "//@source")
-          #local destinations=$(echo ${rule} | /usr/bin/xmllint --xpath 'string(//@destination)' -)
           local destinations=$(echo ${rule} | /usr/bin/xmlstarlet select -t -v "//@destination")
-          #local dports=$(echo ${rule} | /usr/bin/xmllint --xpath 'string(//@dports)' -)
           local dports=$(echo ${rule} | /usr/bin/xmlstarlet select -t -v "//@dports")
-          #local sports=$(echo ${rule} | /usr/bin/xmllint --xpath 'string(//@sports)' -)
           local sports=$(echo ${rule} | /usr/bin/xmlstarlet select -t -v "//@sports")
-          #local state=$(echo ${rule} | /usr/bin/xmllint --xpath 'string(//@state)' -)
           local state=$(echo ${rule} | /usr/bin/xmlstarlet select -t -v "//@state")
-          #local target=$(echo ${rule} | /usr/bin/xmllint --xpath 'string(//@target)' -)
           local target=$(echo ${rule} | /usr/bin/xmlstarlet select -t -v "//@target")
-          #local log=$(echo ${rule} | /usr/bin/xmllint --xpath 'string(//@log)' -)
           local log=$(echo ${rule} | /usr/bin/xmlstarlet select -t -v "//@log")
-          #local loglevel=$(echo ${rule} | /usr/bin/xmllint --xpath 'string(//@log-level)' -)
           local loglevel=$(echo ${rule} | /usr/bin/xmlstarlet select -t -v "//@log-level")
-          #local logprefix=$(echo ${rule} | /usr/bin/xmllint --xpath 'string(//@log-prefix)' -)
           local logprefix=$(echo ${rule} | /usr/bin/xmlstarlet select -t -v "//@log-prefix")
-
-          #echo "c=${chain}, if=${interface}, p=${protocol}, ps=${ports}, s=${state}, t=${target}, l=${log}, ll=${loglevel}, lp=${logprefix}"
 
           # auto create chain and auto pin by chain name prefix        
           if [ "x${chain}" != "x" ]; then create_chains ${table} ${chain}; fi
@@ -290,6 +275,10 @@ set_rules() {
 
     done
 
+    # add marker to be able to determine which rules currently set
+    /usr/bin/xmlstarlet edit -L -i "/rulesets/ruleset[@name='${protv}']" \
+                             -t "attr" -n "enabled" -v "y" "${rules}"
+
     # disable value set for conditions to avoid running rule setup multiple
     # times, e.g. internally set rules for order
     if [ "x${rsc}" != "x" ]; then
@@ -313,23 +302,25 @@ exec_task(){
 if ! [ "${#}" -eq "5" ]; then 
 	/bin/echo "I: Beachte die Anzahl."; usage; exit 1; 
 # check argument option
-elif [ "${option}" != "static" -a "${option}" != "dhcp" -a "${option}" != "down" ]; then
+elif [ "${option}" != "static" -a "${option}" != "dhcp" \
+       -a "${option}" != "down" ]; then
 	/bin/echo "I: Komische Option."; usage; exit 1; 
 fi
 
 # check for existing network interface
 /sbin/ip addr show ${iface} 2>/dev/null
-if [ "${?}" != "0" ]; then /bin/echo "I: Network interface not found."; usage; exit 2; fi
+if [ "${?}" != "0" ]; then 
+  /bin/echo "I: Network interface not found."; usage; exit 2; fi
 
 # set policy to drop 
 ${IPTABLES} -P OUTPUT DROP
 ${IPTABLES} -P INPUT DROP
 ${IPTABLES} -P FORWARD DROP
 
-# bring iface down
-if [ "${option}" == "down" ]; then
-	reset
-fi
+# alway reset rules and bring iface down to op on a fresh env
+reset
+# but stop if if is requested by option 'down'
+if [ "${option}" == "down" ]; then exit 0; fi
 
 # unset remaining interface protocol number 
 downip=$(getip ${iface})
@@ -352,7 +343,8 @@ fi
 
 # check for existing network interface configuration
 /bin/grep -q "${nint}.*${option}$" /etc/network/interfaces
-if [ "${?}" != "0" ]; then /bin/echo "I: Static network interface configuration not found."; usage; exit 3; fi
+if [ "${?}" != "0" ]; then 
+  /bin/echo "I: Static network interface configuration not found."; usage; exit 3; fi
 
 # NOTE: control setup of rules via the 'condition' attribute for rulesets
 #       to avoid, e.g. rejection before rules for other interfaces were setup
@@ -365,7 +357,8 @@ set_rules "dhcp"
 # wake up iface
 /bin/grep -q "^iface\ ${nint}\ inet" /etc/network/interfaces
 ifavail="${?}"
-if [ "${ifavail}" == "1" ]; then /bin/echo "I: Interface ${nint} does not exist."; reset; exit 5; fi
+if [ "${ifavail}" == "1" ]; then 
+  /bin/echo "I: Interface ${nint} does not exist."; reset; exit 5; fi
 # destroy all remaining wpa_supplicant processes by ripping them
 /usr/bin/killall -s 9 wpa_supplicant
 /sbin/ifconfig ${iface} down

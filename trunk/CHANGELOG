@@ -1,11 +1,12 @@
 kaese (0.0.5) UNRELEASED; urgency=medium
 
-  * Implementation of 'exec' tasks to be able to run tools after
-    rules were set up (e.g. openvpn) 
-  * Parameter for passing own IP number to automatically update
-    the rules configuration.
+  * Proof of concept for a webinterface to visualize some iptables 
+    statistics laterwards.
+  * Adding attribute 'enabled' through xmlstarlet to mark rulesets 
+    currently in use. Determined through the webinterface.  
+  * Option 'down' now simply invokes a quit after reset.
 
- -- Marc Bredt <marc.bredt@gmail.com>  Mon, 21 Dec 2015 02:06:53 +0100
+ -- Marc Bredt <marc.bredt@gmail.com>  Sun, 03 Jan 2016 16:14:57 +0100
 
 kaese (0.0.4) stable; urgency=medium
 
