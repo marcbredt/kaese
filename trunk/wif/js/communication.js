@@ -62,7 +62,7 @@ function mouse_handler(e,p){
           var fox = get_array_index(rda,"stats_filter"); 
           var fix = get_array_index(rda,"stats_filter_value");
           //console.log("filter fox=" + fox + ", fix=" + fix);
-          if(rda[fox].value=="on" && rda[fix].value!="") {
+          if(rda[fox]!==undefined && rda[fox].value==="on" && rda[fix].value!=="") {
             var fa = rda[fix].value.split(";");
             //console.log("fa="+dump(fa));
             $(fa).each(function(faix) { 
@@ -150,21 +150,19 @@ function filter_applied(command,cline) {
   var filter = stats.filter;
   var fm = true;
 
-  switch(command) {
-
-    case "logfile" : 
-        var fm = true;
-        $.each(filter,function(key,value){ 
-                        //console.log("f="+dump(filter)+", k="+key+", v="+value); 
-                        fm &= filter_matches(command,cline,key,value);
-                      }); 
-      break;
-
-    case "command" : 
-      break; 
-
-    default : break;
-
+  if(filter.length>0) {
+    switch(command) {
+      case "logfile" : 
+          var fm = true;
+          $.each(filter,function(key,value){ 
+                          //console.log("f="+dump(filter)+", k="+key+", v="+value); 
+                           fm &= filter_matches(command,cline,key,value);
+                        }); 
+        break;
+      case "command" : 
+        break; 
+      default : break;
+    }
   }
 
   return false || fm;
@@ -183,10 +181,15 @@ function evaluate(command,key,line) {
           if(filter_applied(command,line)) {
             //console.log("l='"+line+"' matches filter "+dump(stats.filter));
             // add packet and bytes count to the stats literal
-            stats.setp(1);
-            stats.setb(parseInt(line.match(/LEN=[1-9][0-9]*/).toString().split("=")[1]));
-            stats.setppi(1);
-            stats.setbpi(parseInt(line.match(/LEN=[1-9][0-9]*/).toString().split("=")[1]));
+            var matches = line.match(/LEN=[1-9][0-9]*/);
+            if(matches!==null) {
+              var bytes = parseInt(matches.toString().split("=")[1]);
+              stats.setp(1);
+              stats.setb(bytes);
+              stats.setppi(1);
+              stats.setbpi(bytes);
+            } else {
+              console.log("E: 0 matches in line '" + line + "'"); }
           }
         break;
 
@@ -219,6 +222,9 @@ function modify_stats(command,chunk) {
     // extract statistics from logfile output 
     case "logfile" : 
         // evaluate each line of the chunk
+        // TODO: if the trimmed chunks last char is not an [\r\n] 
+        //       the chunk is broken and needs to be concatenated
+        //       with the next chunk
         $.each(chunk.split(/[\r\n]/g), function(k,l) { 
                                         evaluate(command,k,l); 
                                       });
@@ -279,7 +285,7 @@ function queue_shift() {
 // some timer functions to run
 function timer_run(seconds) {
   $('#span_stats_status').text(stats.gets()); 
-  $('#span_stats_revtimer').text(stats.geti()); 
+  $('#span_stats_revtimer').text(parseInt(stats.geti())); 
   // TODO: update revtimer each second
   rtimer = setInterval(function(){
                          $('#span_stats_revtimer').
@@ -320,7 +326,6 @@ function timer_stop() {
 // send a XMLHttpRequest
 function send_xhr_request(output,method,query,action,command) {
       
-  var n = 3; // lines to look back
   console.log("send_xhr_request: " + action);
 
   if(undefined === xhr && action=="run") {
@@ -464,7 +469,7 @@ var stats = {
            this.packetspi = 0;
            this.bytes = 0;
            this.bytespi = 0;
-           this.interval = 3;
+           this.interval = this.geti();
            this.filter = {};
          }
 }
