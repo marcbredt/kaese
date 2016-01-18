@@ -118,6 +118,88 @@ function rconcat(a,offset) {
   return rc; 
 }
 
+// apply the filter for a single command
+function filter_matches(command,cline,key,value){
+  switch(command) {
+    case "logfile" : 
+        var vs = value.split(/,/g);
+        var va = false;
+        switch(key) {
+          // NOTE: difficulty here is applying 'chain' element on logfile entries
+          case "chain" : 
+            // TODO: 'kaese's rule attrs need to be mapped to logfile abr's
+            break;
+          default : 
+              $.each(vs, function(k,v){
+                           va = va || (cline.match(
+                                         new RegExp(key.toUpperCase()+"="+
+                                                    v.toUpperCase(),"g"))!==null);
+                         }); 
+            break;
+        } 
+        return va;
+      break;
+    
+    case "command" : break;
+    default: break;
+  }
+} 
+
+// apply the filter
+function filter_applied(command,cline) {
+  var filter = stats.filter;
+  var fm = true;
+
+  switch(command) {
+
+    case "logfile" : 
+        var fm = true;
+        $.each(filter,function(key,value){ 
+                        //console.log("f="+dump(filter)+", k="+key+", v="+value); 
+                        fm &= filter_matches(command,cline,key,value);
+                      }); 
+      break;
+
+    case "command" : 
+      break; 
+
+    default : break;
+
+  }
+
+  return false || fm;
+}
+
+// evaluate filter and other stuff to modify the stats liberal
+function evaluate(command,key,line) {
+
+  if(line.trim()!=""&&line.trim()!="\r"
+     &&line.trim()!="\n"&&line.trim()!="\r\n") {
+
+    switch(command) {
+
+      case "logfile" :  
+          //console.log("c="+command+", k="+key+", l="+line);
+          if(filter_applied(command,line)) {
+            //console.log("l='"+line+"' matches filter "+dump(stats.filter));
+            // add packet and bytes count to the stats literal
+            stats.setp(1);
+            stats.setb(parseInt(line.match(/LEN=[1-9][0-9]*/).toString().split("=")[1]));
+            stats.setppi(1);
+            stats.setbpi(parseInt(line.match(/LEN=[1-9][0-9]*/).toString().split("=")[1]));
+          }
+        break;
+
+      case "command" :
+        break;
+
+      default: break;
+
+    }
+
+  }
+}
+
 // calculate stats for values submitted
 function modify_stats(command,chunk) {
 
@@ -131,10 +213,16 @@ function modify_stats(command,chunk) {
         //          if non standard/another chain target
         //
         // COUNT: accept targets + first chain rule
+        evaluate(command,k,chunk); 
       break;
 
     // extract statistics from logfile output 
-    case "logfile" : break;
+    case "logfile" : 
+        // evaluate each line of the chunk
+        $.each(chunk.split(/[\r\n]/g), function(k,l) { 
+                                        evaluate(command,k,l); 
+                                      });
+      break;
 
     default : break;
   }
@@ -143,7 +231,7 @@ function modify_stats(command,chunk) {
 
 // create some random values for testing/demo purposes
 function rand(min,max) {
-  console.log("rand types = " + (typeof min) + ", " + (typeof max));
+  //console.log("rand types = " + (typeof min) + ", " + (typeof max));
   if(typeof min == "undefined" || typeof min != "number") min = 0;
   if(typeof max == "undefined" || typeof max != "number") max = 100;
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -177,27 +265,10 @@ function queue_manage(response,output,command) {
     // TODO: for logfile responses probably create a queue
 
     // then get statistics for the chunk,
-    //modify_stats(command,response_chunk);
+    modify_stats(command,response_chunk);
 
   }
 
-  // fill the queue first
-  /*
-  var nls = (o.innerHTML.match(/<br>/g)||[]).length;
-  var num = 0;
-  //console.log("n=" + n + ", nls=" + nls + ", rtlen=" + rt.length);
-  if(nls>n) {
-    var lines = o.innerHTML.split('<br>'); 
-    //console.log("split=" + lines.length);
-    var contents = rconcat(lines,n);
-    //console.log("rc=" + contents);
-    o.innerHTML = contents; 
-  } else { 
-    o.innerHTML = o.innerHTML + rt.replace(/[\r\n]/g,
-      function(){ return "<br>" + (++num) + ": "; });
-  }
-  //o.scrollTop = o.scrollHeight;
-  */
 }
 
 // shift queue and modify stats
@@ -208,6 +279,12 @@ function queue_shift() {
 // some timer functions to run
 function timer_run(seconds) {
   $('#span_stats_status').text(stats.gets()); 
+  $('#span_stats_revtimer').text(stats.geti()); 
+  // TODO: update revtimer each second
+  rtimer = setInterval(function(){
+                         $('#span_stats_revtimer').
+                           text(parseInt($('#span_stats_revtimer').text())-1); 
+                       }, 1000);
   $('#span_stats_interval').text(stats.geti() + " seconds"); 
   $('#span_stats_filter').text(dump(stats.getf())); 
   timer = setInterval(function(){
@@ -222,6 +299,10 @@ function timer_run(seconds) {
                         */
 
                         // update stats fields
+                        $('#span_stats_revtimer').text(stats.geti()); 
+                        $('#span_stats_duration').
+                           text(parseInt($('#span_stats_duration').text())
+                                  + stats.geti()); 
                         $('#span_stats_num_packets_in_total').text(stats.getp()); 
                         $('#span_stats_num_bytes_in_total').text(stats.getb()); 
                         $('#span_stats_num_packets_per_interval').text(stats.getppi()); 
@@ -232,6 +313,7 @@ function timer_run(seconds) {
 // and to stop a timer
 function timer_stop() {
   $('#span_stats_status').text(stats.gets()); 
+  clearInterval(rtimer);
   clearInterval(timer);
 }
 
@@ -282,7 +364,7 @@ function send_xhr_request(output,method,query,action,command) {
 
 // main
 var xhr; // declared outiside to abort xhr request, otherwise it would be pending
-var timer;
+var rtimer, timer;
 var queue; // fifo queue for logfile content passed thru
 var rptr = 0; // response pointer that stores the last position in the response 
               // text when data passed thru
@@ -302,7 +384,7 @@ var stats = {
 
   bytespi : 0, // initial bytes per interval captured
 
-  interval : 3, // default interval in seconds when refreshing values
+  interval : 10, // default interval in seconds when refreshing values
 
   filter : { // initial filter, contains nothing
            }, 
@@ -391,9 +473,19 @@ var stats = {
 var callbacks = {
   onready : function() {
               // set up default values
+              $('#stats_type').val("logfile");
               $('#stats_filter').prop("checked",true);
-              $('#stats_filter_value').val("chain:output-local");
+              $('#stats_filter_value').val("proto:tcp");
+              $('#span_stats_status').text(stats.gets());
+              $('#span_stats_revtimer').text(stats.geti());
               $('#stats_interval').val(stats.geti());
+              $('#span_stats_interval').text(stats.geti() + " seconds"); 
+              $('#span_stats_duration').text(0);
+              $('#span_stats_filter').text(dump(stats.getf())); 
+              $('#span_stats_num_packets_in_total').text(stats.getp()); 
+              $('#span_stats_num_bytes_in_total').text(stats.getb()); 
+              $('#span_stats_num_packets_per_interval').text(stats.getppi()); 
+              $('#span_stats_num_bytes_per_interval').text(stats.getbpi());
               // set up button listeners
               listen('#stats_form_submit_run'); 
               listen('#stats_form_submit_stop'); 
@@ -403,6 +495,7 @@ var callbacks = {
 $(document).ready(callbacks.onready);
 
 // some simple stat obj tests
+/*
 console.log("stats=" + dump(stats));
 
 stats.setp(621);
@@ -426,3 +519,5 @@ console.log("filter=" + dump(stats.getf()));
 console.log("stats=" + dump(stats));
 stats.init();
 console.log("stats=" + dump(stats));
+*/
+
