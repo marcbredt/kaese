@@ -222,9 +222,6 @@ function modify_stats(command,chunk) {
     // extract statistics from logfile output 
     case "logfile" : 
         // evaluate each line of the chunk
-        // TODO: if the trimmed chunks last char is not an [\r\n] 
-        //       the chunk is broken and needs to be concatenated
-        //       with the next chunk
         $.each(chunk.split(/[\r\n]/g), function(k,l) { 
                                         evaluate(command,k,l); 
                                       });
@@ -261,17 +258,25 @@ function queue_manage(response,output,command) {
   if(response.length>0) {
 
     // get the next response chunk which was not processed yet
-    var response_chunk = response.substring(rptr, response.length);
-    // store last command output length to know where we have been yet
-    rptr = response.length;
+    var rm = response.substring(rptr).match(/[\r\n]/g);
+    if(rm!==null) {
+      // if the trimmed chunks last char is not an [\r\n] 
+      // the chunk is broken and needs to be concatenated
+      // with the next chunk
+      var li = response.substring(rptr).lastIndexOf(rm[rm.length-1]);
+      var response_chunk = response.substring(rptr, rptr+li); 
+      // store last command output length to know where we have been yet
+      rptr = rptr + li;
+      //console.log("li="+li+", rp="+rptr+", r="+response_chunk);
 
-    // and dump the chunk to the output container 
-    $(output).empty(); // clear the output container first
-    $(output).html(response_chunk.replace(/[\r\n]/g,"<br>"));
-    // TODO: for logfile responses probably create a queue
+      // and dump the chunk to the output container 
+      $(output).empty(); // clear the output container first
+      $(output).html(response_chunk.replace(/[\r\n]/g,"<br>"));
+      // TODO: for logfile responses probably create a queue
 
-    // then get statistics for the chunk,
-    modify_stats(command,response_chunk);
+      // then get statistics for the chunk,
+      modify_stats(command,response_chunk);
+    }
 
   }
 
