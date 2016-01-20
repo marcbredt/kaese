@@ -1,7 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <!-- libraries -->
+  <script src="lib/chartjs/1.0.2/Chart.js"></script>
+  <!-- package scripts -->
   <script src="js/communication.js"></script>
+  <script src="js/visualization.js"></script>
 </head>
 <body>
 
@@ -65,20 +69,20 @@ usage: <br>
 <div id="contents_refresh"
      style="width:100%;margin:0px 0px 0px 0px;
             padding:0px 0px 0px 0px;border:1px solid black;">
-  running = <span id="span_stats_status"></span> (<span id="span_stats_revtimer"></span>) <br>
-  interval = <span id="span_stats_interval"></span> <br>
-  duration = <span id="span_stats_duration"></span> seconds <br>
-  filter = <span id="span_stats_filter"></span> <br>
-  packets/total = <span id="span_stats_num_packets_in_total"></span> <br>
-  bytes/total = <span id="span_stats_num_bytes_in_total"></span> <br>
-  packets/interval = <span id="span_stats_num_packets_per_interval"></span> <br>
+  running = <span id="span_stats_status"></span> (<span id="span_stats_revtimer"></span>) &nbsp;
+  interval = <span id="span_stats_interval"></span> &nbsp;
+  duration = <span id="span_stats_duration"></span> seconds &nbsp;
+  filter = <span id="span_stats_filter"></span> &nbsp;
+  packets/total = <span id="span_stats_num_packets_in_total"></span> &nbsp;
+  bytes/total = <span id="span_stats_num_bytes_in_total"></span> &nbsp;
+  packets/interval = <span id="span_stats_num_packets_per_interval"></span> &nbsp;
   bytes/interval = <span id="span_stats_num_bytes_per_interval"></span>
 </div>
 
 <div id="contents_graph"
      style="width:100%;margin:0px 0px 0px 0px;
             padding:0px 0px 0px 0px;border:1px solid black;">
-  here the graph <br>
+  <canvas id="contents_graph_chart" style="width:100%;height:200px;"></canvas>
 </div>
 
 <div id="contents_summary"
