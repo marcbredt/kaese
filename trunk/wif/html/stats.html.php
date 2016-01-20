@@ -4,8 +4,8 @@
   <!-- libraries -->
   <script src="lib/chartjs/1.0.2/Chart.js"></script>
   <!-- package scripts -->
-  <script src="js/visualization.js"></script>
   <script src="js/communication.js"></script>
+  <script src="js/visualization.js"></script>
 </head>
 <body>
 
@@ -44,8 +44,8 @@ usage: <br>
         <td>data:</td>
         <td>
           <select name="stats_data">
-            <option value="p">packets</option>
-            <option value="b">bytes</option> <!-- LEN -->
+            <option>packets</option>
+            <option>bytes</option> <!-- LEN -->
           </select>
         </td>
         <td><input type="checkbox" name="stats_filter" id="stats_filter">filter:</td>
@@ -69,10 +69,10 @@ usage: <br>
 <div id="contents_refresh"
      style="width:100%;margin:0px 0px 0px 0px;
             padding:0px 0px 0px 0px;border:1px solid black;">
-  running = <span id="span_stats_status"></span> (<span id="span_stats_revtimer"></span>) <br>
+  running = <span id="span_stats_status"></span> (<span id="span_stats_revtimer"></span>) &nbsp;
   interval = <span id="span_stats_interval"></span> &nbsp;
   duration = <span id="span_stats_duration"></span> seconds &nbsp;
-  filter = <span id="span_stats_filter"></span> <br>
+  filter = <span id="span_stats_filter"></span> &nbsp;
   packets/total = <span id="span_stats_num_packets_in_total"></span> &nbsp;
   bytes/total = <span id="span_stats_num_bytes_in_total"></span> &nbsp;
   packets/interval = <span id="span_stats_num_packets_per_interval"></span> &nbsp;
