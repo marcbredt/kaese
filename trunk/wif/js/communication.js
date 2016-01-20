@@ -50,12 +50,33 @@ function mouse_handler(e,p){
           var aix = undefined;
           if((aix=get_array_index(rda,"stats_type"))!="undefined" 
              && rda[aix].value=="command") {
+            var command = rda[aix].value;
             var od = document.getElementById("contents_command");
           } else if((aix=get_array_index(rda,"stats_type"))!="undefined"
                     && rda[aix].value=="logfile") {
+            var command = rda[aix].value;
             var od = document.getElementById("contents_logfile");
           } else {
+            var command = "logfile";
             console.log("E: Unknown " + rda[0].name + "='" + rda[0].value + "'");
+          }
+
+          // put the stats datatype flag
+          aix = undefined;
+          if((aix=get_array_index(rda,"stats_data"))!="undefined" 
+             && ["p","b"].indexOf(rda[aix].value)!=-1) {
+            stats.setd(rda[aix].value);
+          } else { 
+            stats.setd("p");
+          }
+
+          // put the interval value
+          aix = undefined;
+          if((aix=get_array_index(rda,"stats_interval"))!="undefined" 
+             && typeof parseInt(rda[aix].value) == "number") {
+            stats.seti(parseInt(rda[aix].value));
+          } else { 
+            stats.seti(stats.geti());
           }
 
           // put the filter
@@ -78,7 +99,11 @@ function mouse_handler(e,p){
 
           // send the xhr 
           od.onclick = send_xhr_request(od, "GET", 
-                         "php/response.php?action=read&"+rd, "run", rda[aix].value);
+                         "php/response.php?action=read&"+rd, "run", command);
+
+          // (re)initiate the chart after a stop
+          $.each(c.data.datasets,function(k,v){ v.data = []; })
+          chart_instantiate("#contents_graph_chart",stats.geti());
 
           // start the timer
           timer_run(stats.geti());
@@ -171,13 +196,15 @@ function filter_applied(command,cline) {
 // evaluate filter and other stuff to modify the stats liberal
 function evaluate(command,key,line) {
 
+  // console.log("0: c="+command+", k="+key+", l="+line);
+
   if(line.trim()!=""&&line.trim()!="\r"
      &&line.trim()!="\n"&&line.trim()!="\r\n") {
 
     switch(command) {
 
       case "logfile" :  
-          //console.log("c="+command+", k="+key+", l="+line);
+          //console.log("1: c="+command+", k="+key+", l="+line);
           if(filter_applied(command,line)) {
             //console.log("l='"+line+"' matches filter "+dump(stats.filter));
             // add packet and bytes count to the stats literal
@@ -206,6 +233,8 @@ function evaluate(command,key,line) {
 // calculate stats for values submitted
 function modify_stats(command,chunk) {
 
+  //console.log("c="+command+", chunk="+chunk);
+ 
   // distinct the commands
   switch(command) {
 
@@ -316,8 +345,23 @@ function timer_run(seconds) {
                                   + stats.geti()); 
                         $('#span_stats_num_packets_in_total').text(stats.getp()); 
                         $('#span_stats_num_bytes_in_total').text(stats.getb()); 
-                        $('#span_stats_num_packets_per_interval').text(stats.getppi()); 
-                        $('#span_stats_num_bytes_per_interval').text(stats.getbpi());
+                        var ppi = stats.getppi(); var bpi = stats.getbpi();
+                        $('#span_stats_num_packets_per_interval').text(ppi); 
+                        $('#span_stats_num_bytes_per_interval').text(bpi);
+
+                        // update chart
+                        append_label_data(stats.geti());
+                        switch(stats.dtype){
+                          // TODO: switch total/per interval amount
+                          case "p" : append_trial_data(0,ppi); break;
+                          case "b" : append_trial_data(0,bpi); break;
+                          default : break;
+                        } 
+                        chart_refresh(); 
+ 
+                        //console.log("stats.values=(p="+stats.getp()+", ppi="+ppi+
+                        //            ", b="+stats.getb()+", bpi="+bpi+")");
+
                       }, seconds*1000);
 }
 
@@ -385,6 +429,8 @@ var stats = {
   // "private" object variables
   
   status : false,
+
+  dtype : "p",
   
   packets : 0, // initial total number of packets captured
 
@@ -414,6 +460,16 @@ var stats = {
   // set packets captured
   sets : function(state) {
            if(typeof state == "boolean") this.status = state;
+         },
+  // get current datatype flag for capturing
+  getd : function() {
+           return this.dtype;
+         },
+  // set current datatype flag for capturing
+  setd : function(dtype) {
+           if(typeof dtype == "string" 
+              && ["p","b"].indexOf(dtype)!=-1) this.dtype = dtype;
+           else this.dtype = dtype;
          },
   // get current packets captured
   getp : function() {
@@ -470,6 +526,7 @@ var stats = {
   // initialize this object
   init : function init() {
            this.status = false;
+           this.dtype = "p";
            this.packets = 0;
            this.packetspi = 0;
            this.bytes = 0;
@@ -496,6 +553,8 @@ var callbacks = {
               $('#span_stats_num_bytes_in_total').text(stats.getb()); 
               $('#span_stats_num_packets_per_interval').text(stats.getppi()); 
               $('#span_stats_num_bytes_per_interval').text(stats.getbpi());
+              // initiate the chart
+              chart_instantiate("#contents_graph_chart",stats.geti());
               // set up button listeners
               listen('#stats_form_submit_run'); 
               listen('#stats_form_submit_stop'); 

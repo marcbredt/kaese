@@ -1,18 +1,18 @@
 Notes
------
+---
 This tool is a netfilter frontend. It reads rulesets from
 configuration files and can be used to setup iptables rules
 for different interfaces using specified network definitions
 from /etc/network/interfaces.
 
 Configuration structure
------------------------
+---
 rulesets = ruleset*
 ruleset = rule*
 rule = attributes*
 
 Attributes
-----------
+---
 active - define a a ruleset/rule as active
 atype - address type passed onto netfilter
 chain - specify to store a rule in, chains will be created if they do not exist
@@ -34,15 +34,14 @@ table - define a table to place a rule into (default=filter)
 target - chain targets, e.g. ACCEPT,MASQUERADE
 
 Modifying CHANGELOG
--------------------
+---
 $ export DEBFULLNAME="Marc Bredt"; export DEBEMAIL="marc.bredt@gmail.com"
 $ dch -c trunk/CHANGELOG --package kaese --distribution stable --create -v 0.0.2
 $ dch -c trunk/CHANGELOG -r
 $ dch -c trunk/CHANGELOG -i
 
-
 Providing access to iptables logfiles for statistics
-----------------------------------------------------
+---
 * via rsyslogd, user group kaese got read access
 
   $ cat /etc/rsyslod.d/iptables.conf
@@ -63,7 +62,7 @@ Providing access to iptables logfiles for statistics
   789 164 -rw-r-----  1 root kaese 161397 Jan  3 16:22 iptables.log
 
 Providing access to iptables command for statistics
----------------------------------------------------
+---
 * via sudo,calife,chiark-really
   * bind a limited amount of parameters for iptables onto sudo calls
   
@@ -102,4 +101,8 @@ Providing access to iptables command for statistics
   #includedir /etc/sudoers.d
 
 * via php's exec/escapeshell*/shell_exec/system etc.
+
+Further usage ideas
+---
+* pattern matching for internet activities
 
