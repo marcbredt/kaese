@@ -1,14 +1,14 @@
 // instantiate the chart
-function chart_instantiate(co,iv) {
+function chart_instantiate(co,ivs) {
   // create a context
   var cctx = $(co).get(0).getContext("2d");
   //Chart.defaults.global.responsive = true;
 
-  // TODO: adjust chart options
+  // TODO: probably adjust chart options
 
   // setup labels for interval
   for(var i=0; i<c.samples; i++) 
-    c.data.labels[i] = (i*iv).toString() + "s";
+    c.data.labels[i] = ((i+1)*ivs).toString() + "s";
 
   // initial drawings
   c.chart = new Chart(cctx);
@@ -28,15 +28,15 @@ function append_trial_data(tix,tdat) {
 }
 
 // append a single value to a specific trial in c.datasets
-function append_label_data() {
+function append_label_data(ivs) {
   var queue = c.data.labels;
-  var last = queue[queue.length-1];
-  if(last===null||last===undefined) last = 0;
-  //console.log("len="+c.data.datasets[0].data.length);
-  if(c.data.datasets[0].data.length == c.samples) {
+  var dlen = c.data.datasets[0].data.length;
+  if(dlen===null||dlen===undefined) dlen = 0;
+  //console.log("len="+dlen+", cs="+c.samples);
+  if(dlen>=c.samples) {
     queue.shift();
     queue[queue.length] = 
-      (parseInt(queue[queue.length-1].split("s")[0])+stats.geti())
+      (parseInt(queue[queue.length-1].split("s")[0])+ivs)
         .toString()+"s";
   }
 }
@@ -44,13 +44,55 @@ function append_label_data() {
 // chart literal
 var c = {
 
-  samples : 30,
+  samples : 50,
 
   chart : null,
 
   type : "Line",
 
   options : {
+    animation : false,
+    animationSteps: 60,
+    animationEasing: "easeOutQuart",
+    showScale: true,
+    scaleOverride: false,
+    scaleSteps: null,
+    scaleStepWidth: null,
+    scaleStartValue: null,
+    scaleLineColor: "rgba(0,0,0,.1)",
+    scaleLineWidth: 1,
+    scaleShowLabels: true,
+    scaleLabel: "<%=value%>",
+    scaleIntegersOnly: true,
+    scaleBeginAtZero: false,
+    scaleFontFamily: "'Helvetica Neue', 'Helvetica', 'Arial', sans-serif",
+    scaleFontSize: 12,
+    scaleFontStyle: "normal",
+    scaleFontColor: "#666",
+    responsive: false,
+    maintainAspectRatio: true,
+    showTooltips: true,
+    customTooltips: false,
+    tooltipEvents: ["mousemove", "touchstart", "touchmove"],
+    tooltipFillColor: "rgba(0,0,0,0.8)",
+    tooltipFontFamily: "'Helvetica Neue', 'Helvetica', 'Arial', sans-serif",
+    tooltipFontSize: 14,
+    tooltipFontStyle: "normal",
+    tooltipFontColor: "#fff",
+    tooltipTitleFontFamily: "'Helvetica Neue', 'Helvetica', 'Arial', sans-serif",
+    tooltipTitleFontSize: 14,
+    tooltipTitleFontStyle: "bold",
+    tooltipTitleFontColor: "#fff",
+    tooltipYPadding: 6,
+    tooltipXPadding: 6,
+    tooltipCaretSize: 8,
+    tooltipCornerRadius: 6,
+    tooltipXOffset: 10,
+    tooltipTemplate: "<%if (label){%><%=label%>: <%}%><%= value %>",
+    multiTooltipTemplate: "<%= value %>",
+    onAnimationProgress: function(){},
+    onAnimationComplete: function(){},
+
     scaleShowGridLines : true,
     scaleGridLineColor : "rgba(0,0,0,.05)",
     scaleGridLineWidth : 1,
@@ -66,43 +108,38 @@ var c = {
     datasetStrokeWidth : 2,
     datasetFill : true,
     legendTemplate : "<ul class=\"<%=name.toLowerCase()%>-legend\"><% for (var i=0; i<datasets.length; i++){%><li><span style=\"background-color:<%=datasets[i].strokeColor%>\"></span><%if(datasets[i].label){%><%=datasets[i].label%><%}%></li><%}%></ul>",
-    multiTooltipTemplate: "<%= value %>",
-    onAnimationProgress: function(){},
-    onAnimationComplete: function(){}
   },
 
   data : {
     labels : [],
     datasets : [
       {
-        label: "My First dataset",
+        label: "Incoming packets",
         fillColor: "rgba(220,220,220,0.2)",
         strokeColor: "rgba(220,220,220,1)",
         pointColor: "rgba(220,220,220,1)",
         pointStrokeColor: "#fff",
         pointHighlightFill: "#fff",
         pointHighlightStroke: "rgba(220,220,220,1)",
-        data: [ ] //[65, 59, 80, 81, 56, 55, 40]
-      }/*,
-      {
-        label: "My Second dataset",
-        fillColor: "rgba(151,187,205,0.2)",
-        strokeColor: "rgba(151,187,205,1)",
-        pointColor: "rgba(151,187,205,1)",
-        pointStrokeColor: "#fff",
-        pointHighlightFill: "#fff",
-        pointHighlightStroke: "rgba(151,187,205,1)",
-        data: [28, 48, 40, 19, 86, 27, 90]
-      }*/
+        data: [ ] 
+      }
     ]
   }
 
 }
 
+/*
+
+ TODO: additional chart lines for accepted/blocked traffic
+
+*/
+
+/* some simple visualization test
 chart_instantiate("#contents_graph_chart",stats.geti());
 var cr = setInterval(function() {
-                       append_label_data(); 
+                       append_label_data(stats.geti()); 
                        append_trial_data(0,rand()); 
                        chart_refresh(); 
                      }, 1000); 
+*/
 
