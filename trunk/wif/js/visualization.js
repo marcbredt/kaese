@@ -114,13 +114,33 @@ var c = {
     labels : [],
     datasets : [
       {
-        label: "Incoming packets",
+        label: "packets seen",
         fillColor: "rgba(220,220,220,0.2)",
         strokeColor: "rgba(220,220,220,1)",
         pointColor: "rgba(220,220,220,1)",
         pointStrokeColor: "#fff",
         pointHighlightFill: "#fff",
         pointHighlightStroke: "rgba(220,220,220,1)",
+        data: [ ] 
+      },
+      {
+        label: "packets passed",
+        fillColor: "rgba(0,220,0,0.2)",
+        strokeColor: "rgba(0,220,0,1)",
+        pointColor: "rgba(0,220,0,1)",
+        pointStrokeColor: "#fff",
+        pointHighlightFill: "#fff",
+        pointHighlightStroke: "rgba(0,220,0,1)",
+        data: [ ] 
+      },
+      {
+        label: "packets denied",
+        fillColor: "rgba(220,0,0,0.2)",
+        strokeColor: "rgba(220,0,0,1)",
+        pointColor: "rgba(220,0,0,1)",
+        pointStrokeColor: "#fff",
+        pointHighlightFill: "#fff",
+        pointHighlightStroke: "rgba(220,0,0,1)",
         data: [ ] 
       }
     ]

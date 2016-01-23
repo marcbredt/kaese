@@ -9,10 +9,17 @@
 </head>
 <body>
 
+<table style="width:100%;height:100%;border:0px solid red;"
+       cellpadding="0" cellspacing="0">
+<tr style="background-color:#0707f2;">
+<td valign="top" style="color:#ffffff;padding:13px;
+                        background-color:#010195;
+                        border-right:1px solid black;">usage:</td>
+<td style="padding:13px;">
 <div id="stats_usage_div"
-     style="width:100%;margin:0px 0px 0px 0px;
-            padding:0px 0px 0px 0px;border:1px solid black;">
-usage: <br>
+     style="width:100%;color:#ffffff;
+            color:#ffffff;
+            border:0px solid black;">
   # filter - "FKEY:FVAL[,FVAL]*[;FKEY:FVAL[,FVAL]*]*" <br> 
   &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; 
   where FKEY is one of { proto; dpt; spt; in; out; src; dst; chain } <br>
@@ -21,12 +28,17 @@ usage: <br>
   &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; 
   comma separated FVALs will be ORed but all FKEYs results will be ANDed
 </div>
-
+</td></tr>
+<tr style="background-color:#0202b8;">
+<td valign="top" style="color:#ffffff;padding:13px;
+                        background-color:#010195;
+                        border-right:1px solid black;">setup:</td>
+<td style="padding:13px;">
 <div id="stats_form_div"
-     style="width:100%;margin:0px 0px 0px 0px;
-            padding:0px 0px 0px 0px;border:1px solid black;">
+     style="width:100%;color:#ffffff;
+            border:0px solid black;">
   <form name="stats_form" id="stats_form">
-    <table style="margin:0px 0px 0px 0px;">
+    <table style="">
       <tr>
         <td>type:</td>
         <td>
@@ -65,42 +77,77 @@ usage: <br>
     </table>
   </form>
 </div>
-
+</td></tr>
+<tr style="background-color:#0707f2;">
+<td valign="top" style="color:#ffffff;padding:13px;
+                        background-color:#010195;
+                        border-right:1px solid black;">summary:</td>
+<td style="padding:13px;">
 <div id="contents_refresh"
-     style="width:100%;margin:0px 0px 0px 0px;
-            padding:0px 0px 0px 0px;border:1px solid black;">
+     style="width:100%;color:#ffffff;
+            border:0px solid black;">
   running = <span id="span_stats_status"></span> (<span id="span_stats_revtimer"></span>) <br>
   interval = <span id="span_stats_interval"></span> &nbsp;
   duration = <span id="span_stats_duration"></span> seconds &nbsp;
   filter = <span id="span_stats_filter"></span> <br>
-  packets/total = <span id="span_stats_num_packets_in_total"></span> &nbsp;
-  bytes/total = <span id="span_stats_num_bytes_in_total"></span> &nbsp;
-  packets/interval = <span id="span_stats_num_packets_per_interval"></span> &nbsp;
-  bytes/interval = <span id="span_stats_num_bytes_per_interval"></span>
-</div>
 
+  channel 0/seen : 
+  packets/total = <span id="span_stats_num_packets_in_total_0"></span> &nbsp;
+  bytes/total = <span id="span_stats_num_bytes_in_total_0"></span> &nbsp;
+  packets/interval = <span id="span_stats_num_packets_per_interval_0"></span> &nbsp;
+  bytes/interval = <span id="span_stats_num_bytes_per_interval_0"></span> <br>
+
+  channel 1/allowed : 
+  packets/total = <span id="span_stats_num_packets_in_total_1"></span> &nbsp;
+  bytes/total = <span id="span_stats_num_bytes_in_total_1"></span> &nbsp;
+  packets/interval = <span id="span_stats_num_packets_per_interval_1"></span> &nbsp;
+  bytes/interval = <span id="span_stats_num_bytes_per_interval_1"></span> <br>
+
+  channel 2/denied : 
+  packets/total = <span id="span_stats_num_packets_in_total_2"></span> &nbsp;
+  bytes/total = <span id="span_stats_num_bytes_in_total_2"></span> &nbsp;
+  packets/interval = <span id="span_stats_num_packets_per_interval_2"></span> &nbsp;
+  bytes/interval = <span id="span_stats_num_bytes_per_interval_2"></span> <br>
+</div>
+</td></tr>
+<tr style="background-color:#0202b8;">
+<td valign="top" style="color:#ffffff;padding:13px;
+                        background-color:#010195;
+                        border-right:1px solid black;">visual:</td>
+<td style="padding:13px;">
 <div id="contents_graph"
-     style="width:100%;margin:0px 0px 0px 0px;
-            padding:0px 0px 0px 0px;border:1px solid black;
-            text-align:center;">
-  <canvas id="contents_graph_chart" style="width:95%;height:200px;"></canvas>
+     style="width:100%;
+            color:#ffffff;
+            border:0px solid black;text-align:center;">
+  <canvas id="contents_graph_chart" style="width:100%;height:200px;"></canvas>
 </div>
-
+</td></tr>
+<tr style="background-color:#0707f2;">
+<td valign="top" style="color:#ffffff;padding:13px;
+                        background-color:#010195;
+                        border-right:1px solid black;">collection:</td>
+<td style="padding:13px;">
 <div id="contents_summary"
-     style="width:100%;margin:0px 0px 0px 0px;
-            padding:0px 0px 0px 0px;border:1px solid black;">
+     style="width:100%;
+            color:#ffffff;
+            border:0px solid black;">
   here the summary (IPs seen, Ports messed, ...) <br>
 </div>
-
-<div id="contents_command"
-     style="width:100%;height:100px;margin:0px 0px 0px 0px;
-            padding:0px 0px 0px 0px;border:1px solid black;
-            overflow:scroll;"></div>
-
-<div id="contents_logfile"
-     style="width:100%;height:100px;margin:0px 0px 0px 0px;
-            padding:0px 0px 0px 0px;overflow:scroll;
-            border:1px solid black;"></div>
-
+</td></tr><tr style="background-color:#0202b8;">
+<td valign="top" style="color:#ffffff;padding:13px;
+                        background-color:#010195;
+                        border-right:1px solid black;">response:</td>
+<td style="padding:13px;">
+<div id="contents_response"
+     style="width:100%;height:100px;
+            border:0px solid black;
+            background-color:#ffffff;overflow:scroll;"></div>
+</td></tr>
+<tr style="background-color:#0202b8;height:100%;">
+<td valign="top" style="color:#ffffff;padding:13px;
+                        background-color:#010195;height:100%;
+                        border-right:1px solid black;"></td>
+<td style="padding:13px;"></td>
+</tr></table>
 </body>
 </html>
