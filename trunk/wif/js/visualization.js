@@ -148,12 +148,6 @@ var c = {
 
 }
 
-/*
-
- TODO: additional chart lines for accepted/blocked traffic
-
-*/
-
 /* some simple visualization test
 chart_instantiate("#contents_graph_chart",stats.geti());
 var cr = setInterval(function() {

@@ -9,6 +9,9 @@ class FileStreamReader extends Reader {
   }
 
   public function read() {
+    // TODO: try to gen json responses for chunks only
+    //       to reduce lags for long term sessions as 
+    //       always the whole response will be passed
     //while(!feof($this->sfh)) {
     while(true) {
       //$s = stream_get_contents($this->sfh,-1); // mem out

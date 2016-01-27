@@ -322,6 +322,9 @@ function queue_manage(response,output,command) {
       // and dump the chunk to the output container 
       $(output).empty(); // clear the output container first
       $(output).html(response_chunk.replace(/[\r\n]/g,"<br>"));
+      // adjust the view on the output container, always show the last line
+      var o = document.getElementById(output.id);
+      o.scrollTop = o.scrollHeight - o.clientHeight;
       // TODO: for logfile responses probably create a queue
 
       // then get statistics for the chunk,
@@ -364,14 +367,15 @@ function timer_run(seconds) {
                         $('#span_stats_duration').
                            text(parseInt($('#span_stats_duration').text())
                                   + stats.geti()); 
-                        var ppi_0, ppi_1, ppi_2, bpi_0, bpi_1, bpi_2;
+                        var ppi = {};
+                        var bpi = {};
                         $.each(stats.channels,function(k,v){
                           $('#span_stats_num_packets_in_total_'+k).text(stats.getp({ chix : k })); 
                           $('#span_stats_num_bytes_in_total_'+k).text(stats.getb({ chix : k })); 
-                          eval("ppi_"+k+" = stats.getppi({ chix : "+k+" });");
-                          eval("bpi_"+k+" = stats.getbpi({chix : "+k+" });");
-                          eval("$('#span_stats_num_packets_per_interval_"+k+"').text(ppi_"+k+");"); 
-                          eval("$('#span_stats_num_bytes_per_interval_"+k+"').text(bpi_"+k+");");
+                          ppi[k] = stats.getppi({ chix : k });
+                          bpi[k] = stats.getbpi({ chix : k });
+                          $('#span_stats_num_packets_per_interval_'+k).text(ppi[k]); 
+                          $('#span_stats_num_bytes_per_interval_'+k).text(bpi[k]);
                         });
 
                         // update chart
@@ -379,14 +383,14 @@ function timer_run(seconds) {
                         switch(stats.dtype){
                           // TODO: switch total/per interval amount
                           case "p" : 
-                              append_trial_data(0,ppi_0);
-                              append_trial_data(1,ppi_1);
-                              append_trial_data(2,ppi_2);
+                              $.each(stats.channels,function(k,v){
+                                append_trial_data(k,ppi[k]);
+                              });
                             break;
                           case "b" : 
-                              append_trial_data(0,bpi_0); 
-                              append_trial_data(1,bpi_1); 
-                              append_trial_data(2,bpi_2); 
+                              $.each(stats.channels,function(k,v){
+                                append_trial_data(k,bpi[k]);
+                              });
                             break;
                           default : break;
                         } 
@@ -566,7 +570,7 @@ var stats = {
          },
   // set a filter key k with value v
   setf : function(k,v) {
-           eval("this.filter." + k + " = v;");
+           this.filter[k] = v;
          },
   // initialize this object
   init : function init() {
