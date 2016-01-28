@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <body>
+<div style="padding:13px;color:#010195;">
 Notes<br />
 -----<br />
 This tool is a netfilter frontend. It reads rulesets from<br />
@@ -106,6 +107,7 @@ Providing access to iptables command for statistics<br />
 <br />
 * via php's exec/escapeshell*/shell_exec/system etc.<br />
 <br />
+</div>
 </body>
 </html>
 

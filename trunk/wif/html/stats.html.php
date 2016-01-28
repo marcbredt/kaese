@@ -9,16 +9,14 @@
 </head>
 <body>
 
-<table style="width:100%;height:100%;border:0px solid red;"
+<table style="width:100%;height:100%;color:#010195;border:0px solid red;"
        cellpadding="0" cellspacing="0">
-<tr style="background-color:#0707f2;">
-<td valign="top" style="color:#ffffff;padding:13px;
-                        background-color:#010195;
-                        border-right:1px solid black;">usage:</td>
+<tr style="">
+<td valign="top" style="padding:13px;font-weight:bold;
+                        border-right:0px solid black;">usage:</td>
 <td style="padding:13px;">
 <div id="stats_usage_div"
-     style="width:100%;color:#ffffff;
-            color:#ffffff;
+     style="width:100%;
             border:0px solid black;">
   # filter - "FKEY:FVAL[,FVAL]*[;FKEY:FVAL[,FVAL]*]*" <br> 
   &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; 
@@ -29,21 +27,22 @@
   comma separated FVALs will be ORed but all FKEYs results will be ANDed
 </div>
 </td></tr>
-<tr style="background-color:#0202b8;">
-<td valign="top" style="color:#ffffff;padding:13px;
-                        background-color:#010195;
-                        border-right:1px solid black;">setup:</td>
+<tr style="">
+<td valign="top" style="padding:13px;font-weight:bold;                        
+                        border-right:0px solid black;">setup:</td>
 <td style="padding:13px;">
 <div id="stats_form_div"
-     style="width:100%;color:#ffffff;
+     style="width:100%;
             border:0px solid black;">
   <form name="stats_form" id="stats_form">
     <table style="">
+      <!-- TODO: monitoring type - live/static -->
       <tr>
         <td>type:</td>
         <td>
           <select name="stats_type" id="stats_type">
-            <option value="command">command</option>
+            <option value="iptables">iptables</option>
+            <option value="tcpdump">tcpdump</option>
             <option value="logfile">logfile</option>
           </select>
         </td>
@@ -78,75 +77,82 @@
   </form>
 </div>
 </td></tr>
-<tr style="background-color:#0707f2;">
-<td valign="top" style="color:#ffffff;padding:13px;
-                        background-color:#010195;
-                        border-right:1px solid black;">summary:</td>
+<tr style="">
+<td valign="top" style="padding:13px;font-weight:bold;                        
+                        border-right:0px solid black;">summary:</td>
 <td style="padding:13px;">
 <div id="contents_refresh"
-     style="width:100%;color:#ffffff;
+     style="width:100%;
             border:0px solid black;">
+
+  <table cellpadding="0" cellspacing="0" border="0">
+  <tr><td colspan="2">
   running = <span id="span_stats_status"></span> (<span id="span_stats_revtimer"></span>) <br>
   interval = <span id="span_stats_interval"></span> &nbsp;
   duration = <span id="span_stats_duration"></span> seconds &nbsp;
   filter = <span id="span_stats_filter"></span> <br>
+  </td></tr><tr><td>channel 0/seen :</td><td>
+  packets/total = <span id="span_stats_num_packets_in_total_0" style="font-weight:bold;color:#dcdcdc;"></span> &nbsp; | &nbsp; 
+  bytes/total = <span id="span_stats_num_bytes_in_total_0" style="font-weight:bold;color:#dcdcdc;"></span> &nbsp; | &nbsp; 
+  packets/interval = <span id="span_stats_num_packets_per_interval_0" style="font-weight:bold;color:#dcdcdc;"></span> &nbsp; | &nbsp; 
+  bytes/interval = <span id="span_stats_num_bytes_per_interval_0" style="font-weight:bold;color:#dcdcdc;"></span> 
+  </td></tr></tr><td></td><td>
+  max. pkts/interval = <span id="span_stats_max_packets_per_interval_0" style="font-weight:bold;color:#dcdcdc;"></span> &nbsp; | &nbsp; 
+  max. bytes/interval = <span id="span_stats_max_bytes_per_interval_0" style="font-weight:bold;color:#dcdcdc;"></span> <br>
 
-  channel 0/seen : 
-  packets/total = <span id="span_stats_num_packets_in_total_0"></span> &nbsp;
-  bytes/total = <span id="span_stats_num_bytes_in_total_0"></span> &nbsp;
-  packets/interval = <span id="span_stats_num_packets_per_interval_0"></span> &nbsp;
-  bytes/interval = <span id="span_stats_num_bytes_per_interval_0"></span> <br>
+  </td></tr><tr><td>channel 1/allowed :</td><td> 
+  packets/total = <span id="span_stats_num_packets_in_total_1" style="font-weight:bold;color:#00ff00;"></span> &nbsp; | &nbsp; 
+  bytes/total = <span id="span_stats_num_bytes_in_total_1" style="font-weight:bold;color:#00ff00;"></span> &nbsp; | &nbsp; 
+  packets/interval = <span id="span_stats_num_packets_per_interval_1" style="font-weight:bold;color:#00ff00;"></span> &nbsp; | &nbsp; 
+  bytes/interval = <span id="span_stats_num_bytes_per_interval_1" style="font-weight:bold;color:#00ff00;"></span>
+  </td></tr></tr><td></td><td>
+  max. pkts/interval = <span id="span_stats_max_packets_per_interval_1" style="font-weight:bold;color:#00ff00;"></span> &nbsp; | &nbsp; 
+  max. bytes/interval = <span id="span_stats_max_bytes_per_interval_1" style="font-weight:bold;color:#00ff00;"></span> <br>
 
-  channel 1/allowed : 
-  packets/total = <span id="span_stats_num_packets_in_total_1"></span> &nbsp;
-  bytes/total = <span id="span_stats_num_bytes_in_total_1"></span> &nbsp;
-  packets/interval = <span id="span_stats_num_packets_per_interval_1"></span> &nbsp;
-  bytes/interval = <span id="span_stats_num_bytes_per_interval_1"></span> <br>
+  </td></tr><tr><td>channel 2/denied :</td><td>
+  packets/total = <span id="span_stats_num_packets_in_total_2" style="font-weight:bold;color:#ff0000;"></span> &nbsp; | &nbsp; 
+  bytes/total = <span id="span_stats_num_bytes_in_total_2" style="font-weight:bold;color:#ff0000;"></span> &nbsp; | &nbsp; 
+  packets/interval = <span id="span_stats_num_packets_per_interval_2" style="font-weight:bold;color:#ff0000;"></span> &nbsp; | &nbsp; 
+  bytes/interval = <span id="span_stats_num_bytes_per_interval_2" style="font-weight:bold;color:#ff0000;"></span>
+  </td></tr></tr><td></td><td>
+  max. pkts/interval = <span id="span_stats_max_packets_per_interval_2" style="font-weight:bold;color:#ff0000;"></span> &nbsp; | &nbsp;
+  max. bytes/interval = <span id="span_stats_max_bytes_per_interval_2" style="font-weight:bold;color:#ff0000;"></span> <br>
+  </td></tr></table>
 
-  channel 2/denied : 
-  packets/total = <span id="span_stats_num_packets_in_total_2"></span> &nbsp;
-  bytes/total = <span id="span_stats_num_bytes_in_total_2"></span> &nbsp;
-  packets/interval = <span id="span_stats_num_packets_per_interval_2"></span> &nbsp;
-  bytes/interval = <span id="span_stats_num_bytes_per_interval_2"></span> <br>
 </div>
 </td></tr>
-<tr style="background-color:#0202b8;">
-<td valign="top" style="color:#ffffff;padding:13px;
-                        background-color:#010195;
-                        border-right:1px solid black;">visual:</td>
+<tr style="">
+<td valign="top" style="padding:13px;font-weight:bold;                        
+                        border-right:0px solid black;">visual:</td>
 <td style="padding:13px;">
 <div id="contents_graph"
      style="width:100%;
-            color:#ffffff;
+            
             border:0px solid black;text-align:center;">
   <canvas id="contents_graph_chart" style="width:100%;height:200px;"></canvas>
 </div>
 </td></tr>
-<tr style="background-color:#0707f2;">
-<td valign="top" style="color:#ffffff;padding:13px;
-                        background-color:#010195;
-                        border-right:1px solid black;">collection:</td>
+<tr style="">
+<td valign="top" style="padding:13px;font-weight:bold;                        
+                        border-right:0px solid black;">collection:</td>
 <td style="padding:13px;">
-<div id="contents_summary"
+<div id="contents_collection"
      style="width:100%;
-            color:#ffffff;
             border:0px solid black;">
-  here the summary (IPs seen, Ports messed, ...) <br>
 </div>
-</td></tr><tr style="background-color:#0202b8;">
-<td valign="top" style="color:#ffffff;padding:13px;
-                        background-color:#010195;
-                        border-right:1px solid black;">response:</td>
+</td></tr><tr style="">
+<td valign="top" style="padding:13px;font-weight:bold;                        
+                        border-right:0px solid black;">response:</td>
 <td style="padding:13px;">
 <div id="contents_response"
      style="width:100%;height:100px;
             border:0px solid black;
-            background-color:#ffffff;overflow:scroll;"></div>
+            overflow:scroll;"></div>
 </td></tr>
-<tr style="background-color:#0202b8;height:100%;">
-<td valign="top" style="color:#ffffff;padding:13px;
-                        background-color:#010195;height:100%;
-                        border-right:1px solid black;"></td>
+<tr style="height:100%;">
+<td valign="top" style="padding:13px;
+                        height:100%;
+                        border-right:0px solid black;"></td>
 <td style="padding:13px;"></td>
 </tr></table>
 </body>

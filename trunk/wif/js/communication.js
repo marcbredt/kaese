@@ -20,6 +20,77 @@ function get_array_index(array,iname) {
 
 }
 
+function window_handler(e,p) {
+
+  /*
+  console.log("window_event=" + dump(e) + 
+              "\n\nwith=" + dump(p) + "\n");
+  */
+
+  // unload event is fired upon refresh button pressed
+  if(p.type==="unload" ) {
+    // stop xhr request if page is refreshed
+    if(stats.geti()) $('#stats_form_submit_stop').click();
+  }
+}
+
+// key handler for actions that include a location change
+// like F5, Alt+Left, etc. to invoke a stop call first
+function key_handler(e,p) {
+
+  /*
+  console.log("key_event=" + dump(e) + 
+              "\n\nwith=" + dump(p) + "\n");
+  */
+
+  var kc = p.keyCode;
+  //console.log("kc="+kc+"\n");
+  if(p.type==="keydown" ) {
+    switch(kc) {
+      case 13 : ; // Enter
+      case 32 : // Space
+          if(!stats.gets && $('#stats_form_submit_run').is(':focus'))
+            $('#stats_form_submit_run').click(); 
+          else if(stats.gets() && $('#stats_form_submit_stop').is(':focus')) 
+            $('#stats_form_submit_stop').click(); 
+        break;
+      case 18 : // Alt 
+          // set a state to wait for 37/39
+          keystate.keydown['alt'] = true;
+          keystate.keyup['alt'] = false;
+        break;
+      case 37 : ; // Left
+      case 39 : // Right, it's not possible in this navigation scenario
+                //          to reach a state where the history contains
+                //          an upcoming url as going back appends the form
+                //          data from the stats page to the query string
+                //        before there is a need to really handle Alt+Right
+                //          there must be a key handler setup adjusting url's
+                //        for now Alt+Right simply stops all xr events
+          console.log("ref="+document.referrer);
+          if(stats.gets() && keystate.keydown.alt) 
+            $('#stats_form_submit_stop').click();
+        break;
+      case 116 : // F5 
+          // simulate a mouse click
+          if(stats.gets()) $('#stats_form_submit_stop').click();
+        break;
+      default: break;
+    }
+
+  // mainly used to unset flags for key
+  } else if(p.type==="keyup" ) {
+    switch(kc) {
+      case 18 : // Alt 
+          // set a state to wait for 37/39
+          keystate.keydown['alt'] = false;
+          keystate.keyup['alt'] = true;
+        break;
+    }
+  }
+
+}
+
 // mouse handler
 function mouse_handler(e,p){ 
 
@@ -45,16 +116,21 @@ function mouse_handler(e,p){
 
           var rd = $("#stats_form").serialize();
           var rda = $("#stats_form").serializeArray();
+          var command = "";
           //console.log("rd=" + rd + ", rda=" + dump(rda));
           
           // get the command type
           var aix = undefined;
+          var command = "";
           if((aix=get_array_index(rda,"stats_type"))!="undefined" 
-             && rda[aix].value=="command") {
-            var command = rda[aix].value;
+             && rda[aix].value=="iptables") {
+            command = rda[aix].value;
           } else if((aix=get_array_index(rda,"stats_type"))!="undefined"
                     && rda[aix].value=="logfile") {
-            var command = rda[aix].value;
+            command = rda[aix].value;
+          } else if((aix=get_array_index(rda,"stats_type"))!="undefined"
+                    && rda[aix].value=="tcpdump") {
+            command = rda[aix].value;
           } else {
             var command = "logfile";
             console.log("E: Unknown " + rda[0].name + "='" + rda[0].value + "'");
@@ -128,9 +204,25 @@ function mouse_handler(e,p){
 }
 
 // set up listeners, trigger function mouse_handler on click events
-function listen(o) {
-  $(o).on("mouseevent", mouse_handler); 
-  $(o).click("mouseevent", function(event){$(o).trigger("mouseevent",event)});
+function listen(type,o) {
+
+  // register mouse events on object o
+  if(type==="mouse"){
+    $(o).on("mouseevent", mouse_handler); 
+    $(o).click("mouseevent", function(event){$(o).trigger("mouseevent",event)});
+  
+  // register key events
+  } else if(type==="key") {
+    // TODO: lock key events on buttons, e.g. double click scenarios
+    $(o).on("keyevent", key_handler);
+    $(o).keydown("keyevent", function(event){$(o).trigger("keyevent",event)});
+
+  // register window events
+  } else if(type==="window") {
+    $(o).on("windowevent", window_handler);
+    $(o).unload("windowevent", function(event){$(o).trigger("windowevent",event)});
+
+  }
 }
 
 // reverse concatenation of array contents
@@ -163,7 +255,9 @@ function filter_matches(command,cline,key,value){
         return va;
       break;
     
-    case "command" : break;
+    case "iptables" : break;
+    case "tcpdump" : break;
+
     default: break;
   }
 } 
@@ -182,13 +276,139 @@ function filter_applied(command,cline) {
                            fm &= filter_matches(command,cline,key,value);
                         }); 
         break;
-      case "command" : 
-        break; 
+
+      case "iptables" : break; 
+      case "tcpdump" : break; 
+
       default : break;
     }
   }
 
   return false || fm;
+}
+
+// add collection info from logfile line
+function collection_add(type,chunk,selem) {
+
+  var m = undefined;
+  var p = undefined;
+
+  switch(selem) {
+
+    case "protos" : 
+        switch(type){
+          case "logfile" : 
+              m = chunk.match(/ PROTO=(.*?) /);
+              if(m!==null) p = m[1].toString(); // n: contains the matches for (.*?)
+            break;
+          case "iptables" : break;
+          case "tcpdump" : break;
+          default : break;
+        }
+      break;
+
+    case "ipsrcs" : 
+        switch(type){
+          case "logfile" : 
+              m = chunk.match(/ SRC=(.*?) /);
+              if(m!==null) p = m[1].toString();
+            break;
+          case "iptables" : break;
+          case "tcpdump" : break;
+          default : break;
+        }
+      break;
+
+    case "ipdsts" : 
+        switch(type){
+          case "logfile" :
+              m = chunk.match(/ DST=(.*?) /);
+              if(m!==null) p = m[1].toString();
+            break;
+          case "iptables" : break;
+          case "tcpdump" : break;
+          default : break;
+        }
+      break;
+
+    case "dports" : 
+        switch(type){
+          case "logfile" : 
+              m = chunk.match(/ DPT=(.*?) /);
+              if(m!==null) p = m[1].toString();
+            break;
+          case "iptables" : break;
+          case "tcpdump" : break;
+          default : break;
+        }
+      break;
+
+    case "sports" : 
+        switch(type){
+          case "logfile" :
+              m = chunk.match(/ SPT=(.*?) /);
+              if(m!==null) p = m[1].toString();
+            break;
+          case "iptables" : break;
+          case "tcpdump" : break;
+          default : break;
+        }
+      break;
+
+    case "ifsinc" : 
+        switch(type){
+          case "logfile" : 
+              m = chunk.match(/ IN=(.*?) /);
+              if(m!==null) p = m[1].toString();
+            break;
+          case "iptables" : break;
+          case "tcpdump" : break;
+          default : break;
+        }
+      break;
+
+    case "ifsout" : 
+        switch(type){
+          case "logfile" : 
+              m = chunk.match(/ OUT=(.*?) /);
+              if(m!==null) p = m[1].toString();
+            break;
+          case "iptables" : break;
+          case "tcpdump" : break;
+          default : break;
+        }
+      break;
+
+    case "flgcbo" : 
+        switch(type){
+          case "logfile" : 
+              m = chunk.match(/RES=(.*?) (.*) URGP/);
+              if(m!==null) p = m[2].toString();
+            break;
+          case "iptables" : break;
+          case "tcpdump" : break;
+          default : break;
+        }
+      break;
+
+    case "macadr" : 
+        switch(type){
+          case "logfile" : 
+              m = chunk.match(/ MAC=(.*?) /);
+              if(m!==null) p = m[1].toString();
+            break;
+          case "iptables" : break;
+          case "tcpdump" : break;
+          default : break;
+        }
+      break;
+
+    default : break;
+
+  }
+
+  if(!(p===undefined)&&!(p===null)&&p.trim()!=="")
+    collection.add({ name : selem, value : p });
 }
 
 // evaluate filter and other stuff to modify the stats liberal
@@ -218,6 +438,8 @@ function evaluate(command,key,line) {
               stats.setb({ chix : 0 },bytes);
               stats.setppi({ chix : 0 },1);
               stats.setbpi({ chix : 0 },bytes);
+              stats.setmaxppi({ chix : 0 },1);
+              stats.setmaxbpi({ chix : 0 },bytes);
 
               // update the "allowed"-channel
               // simple grep for the rule log prefix right before drop
@@ -226,6 +448,8 @@ function evaluate(command,key,line) {
                 stats.setb({ chix : 1 },bytes);
                 stats.setppi({ chix : 1 },1);
                 stats.setbpi({ chix : 1 },bytes);
+                stats.setmaxppi({ chix : 1 },1);
+                stats.setmaxbpi({ chix : 1 },bytes);
 
               // update the "denied"-channel
               } else if(line.match(/iptables: \[OTHER/)) {
@@ -233,16 +457,29 @@ function evaluate(command,key,line) {
                 stats.setb({ chix : 2 },bytes);
                 stats.setppi({ chix : 2 },1);
                 stats.setbpi({ chix : 2 },bytes);
+                stats.setmaxppi({ chix : 2 },1);
+                stats.setmaxbpi({ chix : 2 },bytes);
 
               }
+
+              // afterwards fill the collection
+              collection_add(command,line,"protos");
+              collection_add(command,line,"ipsrcs");
+              collection_add(command,line,"ipdsts");
+              collection_add(command,line,"dports");
+              collection_add(command,line,"sports");
+              collection_add(command,line,"ifsinc");
+              collection_add(command,line,"ifsout");
+              collection_add(command,line,"flgcbo");
+              collection_add(command,line,"macadr");
 
             } else {
               console.log("E: No 'LEN' matches in line '" + line + "' found."); }
           }
         break;
 
-      case "command" :
-        break;
+      case "iptables" : break;
+      case "tcpdump" : break;
 
       default: break;
 
@@ -260,13 +497,16 @@ function modify_stats(command,chunk) {
   switch(command) {
 
     // extract statistics directly from command output chunk
-    case "command" : 
+    case "iptables" : 
         // NOTES: main chains -> first rule = max packets/bytes
         //        sub chains -> sum of accept targets or first rule
         //          if non standard/another chain target
         //
         // COUNT: accept targets + first chain rule
         evaluate(command,k,chunk); 
+      break;
+
+    case "tcpdump" : 
       break;
 
     // extract statistics from logfile output 
@@ -335,11 +575,6 @@ function queue_manage(response,output,command) {
 
 }
 
-// shift queue and modify stats
-function queue_shift() {
-
-}
-
 // some timer functions to run
 function timer_run(seconds) {
   $('#span_stats_status').text(stats.gets()); 
@@ -376,6 +611,10 @@ function timer_run(seconds) {
                           bpi[k] = stats.getbpi({ chix : k });
                           $('#span_stats_num_packets_per_interval_'+k).text(ppi[k]); 
                           $('#span_stats_num_bytes_per_interval_'+k).text(bpi[k]);
+                          $('#span_stats_max_packets_per_interval_'+k).text(
+                            stats.getmaxppi({ chix : k })); 
+                          $('#span_stats_max_bytes_per_interval_'+k).text(
+                            stats.getmaxbpi({ chix : k })); 
                         });
 
                         // update chart
@@ -395,6 +634,9 @@ function timer_run(seconds) {
                           default : break;
                         } 
                         chart_refresh(); 
+                         
+                        // update the collection container
+                        collection.update();
  
                         //console.log("stats.values=(p="+stats.getp()+", ppi="+ppi+
                         //            ", b="+stats.getb()+", bpi="+bpi+")");
@@ -454,12 +696,69 @@ function send_xhr_request(output,method,query,action,command) {
 }
 
 // main
+
 var xhr; // declared outiside to abort xhr request, otherwise it would be pending
 var rtimer, timer;
 var queue; // fifo queue for logfile content passed thru
 var rptr = 0; // response pointer that stores the last position in the response 
               // text when data passed thru
- 
+
+// stores states for keys, to fire events on multi key events
+var keystate = {
+  keydown : {},
+  keyup : {}
+}
+
+// stores elements seen, IP nums/ports/interfaces
+// TODO: context menu for collection elements
+//       e.g. run with filter, whois lookup
+var collection = {
+
+  // NOTE: match elements as e.g. "IN"/"PROTO" are not bind to the collection
+  //       objects as they depend on the stats_type
+
+  protos : { name : "Protocols:", values : [] },
+  ipsrcs : { name : "IP source numbers:", values : [] },
+  ipdsts : { name : "IP destination numbers:", values : [] },
+  dports : { name : "Destination ports:", values : [] },
+  sports : { name : "Source ports:", values : [] },
+  ifsinc : { name : "Incoming interfaces:", values : [] },
+  ifsout : { name : "Outgoing interfaces:", values : [] },
+  flgcbo : { name : "Flag combinations:", values : [] },
+  macadr : { name : "MAC adresses:", values : [] },
+
+  contains : function(o) {
+               return this[o.name].values.some(val => val === o.value); 
+             },
+
+  add : function(o) {
+          if(!this.contains(o)) {
+            //console.log("o="+dump(o)+" added");
+            this[o.name].values[this[o.name].values.length] = o.value;
+          //} else {
+            //console.log("o="+dump(o)+" already exist");
+          }
+        },
+
+  update : function() {
+             var htmlstr = '<table style="width:100%;" cellpadding="0" cellspacing="0" border="0">';
+             $.each(this,function(k,v){
+               //console.log("type_k="+(typeof k)+", type_v="+(typeof v));
+               if((typeof v)==="object") {
+                 htmlstr += '<tr><td style="width:200px;" valign="top">'+v.name+' </td>'+
+                            '<td><div style="width:100%;word-wrap:break-word;">';
+                 var six = htmlstr.length; 
+                 $.each(v.values,function(k,v){ 
+                                   htmlstr += '<a href="">'+v+'</a> '; 
+                                 });
+                 htmlstr += '</div></td></tr>';
+               }
+             })
+             $('#contents_collection').html(htmlstr);
+           }
+}
+
+
 // statistics object/literal, contains 
 var stats = { 
 
@@ -479,22 +778,28 @@ var stats = {
       name : "seen",
       packets : 0, // initial total number of packets captured
       packetspi : 0, // initial packets per interval captured
+      maxppi : 0, // initial maximal amount of packets per interval captured
       bytes : 0, // initial total number of bytes captured
       bytespi : 0, // initial bytes per interval captured
+      maxbpi : 0, // initial maximum number of bytes captured per interval
     },
     {
       name : "allowed",
       packets : 0, // initial total number of packets captured
       packetspi : 0, // initial packets per interval captured
+      maxppi : 0, // initial maximal amount of packets per interval captured
       bytes : 0, // initial total number of bytes captured
       bytespi : 0, // initial bytes per interval captured
+      maxbpi : 0, // initial maximum number of bytes captured per interval
     },
     {
       name : "denied",
       packets : 0, // initial total number of packets captured
       packetspi : 0, // initial packets per interval captured
+      maxppi : 0, // initial maximal amount of packets per interval captured
       bytes : 0, // initial total number of bytes captured
       bytespi : 0, // initial bytes per interval captured
+      maxbpi : 0, // initial maximum number of bytes captured per interval
     }
   ],
 
@@ -538,6 +843,19 @@ var stats = {
   setppi : function(o,amount) {
            this.channels[o.chix].packetspi += amount;
          },
+  // get current maximum of packets captured during interval
+  getmaxppi : function(o) {
+           var maxppi = this.channels[o.chix].maxppi;
+           var cmaxppi = parseInt($('#span_stats_max_packets_per_interval_'+o.chix).text());
+           if(isNaN(cmaxppi)) cmaxppi = 0;
+           this.channels[o.chix].maxppi = 0;
+           if(maxppi > cmaxppi) return maxppi;
+           return cmaxppi;
+         },
+  // set maximum of packets captured during interval
+  setmaxppi : function(o,amount) {
+           this.channels[o.chix].maxppi += amount;
+         },
   // get current bytes captured
   getb : function(o) {
            return this.channels[o.chix].bytes;
@@ -549,12 +867,25 @@ var stats = {
   // get current bytes captured during interval
   getbpi : function(o) {
            var bpi = this.channels[o.chix].bytespi;
-           this.bytespi = 0;
+           this.channels[o.chix].bytespi = 0;
            return bpi;
          },
   // set bytes captured during interval
   setbpi : function(o,amount) {
            this.channels[o.chix].bytespi += amount;
+         },
+  // get current maximum of packets captured during interval
+  getmaxbpi : function(o) {
+           var maxbpi = this.channels[o.chix].maxbpi;
+           var cmaxbpi = parseInt($('#span_stats_max_bytes_per_interval_'+o.chix).text());
+           if(isNaN(cmaxbpi)) cmaxbpi = 0;
+           this.channels[o.chix].maxbpi = 0;
+           if(maxbpi > cmaxbpi) return maxbpi;
+           return cmaxbpi;
+         },
+  // set maximum of packets captured during interval
+  setmaxbpi : function(o,amount) {
+           this.channels[o.chix].maxbpi += amount;
          },
   // get current interval set
   geti : function() {
@@ -581,13 +912,23 @@ var stats = {
            $.each(this.channels,function(k,v){
              this.packets = 0;
              this.packetspi = 0;
+             this.maxppi = 0;
              this.bytes = 0;
              this.bytespi = 0;
+             this.maxbpi = 0;
            });
          }
 }
 
 // document callbacks
+// TODO: initialize data channels for visualization from database/textfile
+//         to be able to see "current" state when connecting
+//       needs a backend mechanism to grab data from logfile/command which
+//         additinally provides config for the frontend on connection
+//         e.g. cronjob, nodejs?
+// TODO: using a backend storage mechanism for data trial could be used to
+//         look back (in anger)
+// TODO: switch view day/week/month for the visualization
 var callbacks = {
   onready : function() {
               // set up default values
@@ -605,12 +946,26 @@ var callbacks = {
                 $('#span_stats_num_bytes_in_total_'+k).text(stats.getb({ chix : k })); 
                 $('#span_stats_num_packets_per_interval_'+k).text(stats.getppi({ chix : k })); 
                 $('#span_stats_num_bytes_per_interval_'+k).text(stats.getbpi({ chix : k }));
+                $('#span_stats_max_packets_per_interval_'+k).text(stats.getmaxppi({ chix : k })); 
+                $('#span_stats_max_bytes_per_interval_'+k).text(stats.getmaxbpi({ chix : k }));
               });
+
               // initiate the chart
               chart_instantiate("#contents_graph_chart",stats.geti());
+
+              // init/update the collection output container
+              collection.update();
+
               // set up button listeners
-              listen('#stats_form_submit_run'); 
-              listen('#stats_form_submit_stop'); 
+              listen("mouse", '#stats_form_submit_run'); 
+              listen("mouse", '#stats_form_submit_stop'); 
+              // set up global key listeners for location changes/refresh
+              // e.g. Enter, Space, F5, Alt+Left/Right
+              listen("key", '#stats_form_submit_run');
+              listen("key", '#stats_form_submit_stop'); 
+              // setup window listeners to recognize refreshes/location changes
+              // e.g. refresh button, address change + enter, startpage ...
+              listen("window", window); 
             } 
 }
 // set focus and capture key events
@@ -643,3 +998,21 @@ stats.init();
 console.log("stats=" + dump(stats));
 */
 
+// some simple collection obj tests
+/*
+collection.update();
+var o = { name : "protos", value : "1" };
+if(!collection.contains(o)) { console.log("adding o="+dump(o)); collection.add(o) }
+if(collection.contains(o)) console.log("o="+dump(o)+" already exists.");
+collection.update();
+o.value = "2";
+if(!collection.contains(o)) { console.log("adding o="+dump(o)); collection.add(o) }
+if(collection.contains(o)) console.log("o="+dump(o)+" already exists.");
+collection.update();
+o.value = "3";
+if(!collection.contains(o)) { console.log("adding o="+dump(o)); collection.add(o) }
+if(collection.contains(o)) console.log("o="+dump(o)+" already exists.");
+collection.update();
+o.value = "4"; collection.add(o); collection.update();
+o.value = "5"; collection.add(o); collection.update();
+*/

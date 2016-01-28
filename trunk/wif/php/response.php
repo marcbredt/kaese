@@ -64,7 +64,7 @@ if(strncmp($_GET['action'],"read",4)==0) {
 
   // if the iptables command should be used
   } else if(isset($_GET['stats_type'])
-            && strncmp($_GET['stats_type'],"command",7)==0) {
+            && strncmp($_GET['stats_type'],"iptables",7)==0) {
 
     // check the command prefix
     //$cmd = "sudo /sbin/iptables -t filter -nvx --list input-dns"; // dummy
@@ -100,6 +100,11 @@ if(strncmp($_GET['action'],"read",4)==0) {
     // execute the command
     $sce = new ShellCommandExecutor();
     $sce->execute($cmd);
+
+  // if the tcpdump command should be used
+  } else if(isset($_GET['stats_type'])
+            && strncmp($_GET['stats_type'],"tcpdump",7)==0) {
+    // TODO: NYI
 
   } else {
     // error

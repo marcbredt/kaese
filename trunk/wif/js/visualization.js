@@ -1,10 +1,15 @@
 // instantiate the chart
 function chart_instantiate(co,ivs) {
+
   // create a context
   var cctx = $(co).get(0).getContext("2d");
-  //Chart.defaults.global.responsive = true;
 
-  // TODO: probably adjust chart options
+  // adjust chart options
+  /*
+  Chart.defaults.global.responsive = true;
+  Chart.defaults.global.animation = false;
+  Chart.defaults.global.bezierCurve = false;
+  */
 
   // setup labels for interval
   for(var i=0; i<c.samples; i++) 
@@ -13,6 +18,7 @@ function chart_instantiate(co,ivs) {
   // initial drawings
   c.chart = new Chart(cctx);
   chart_refresh();
+
 }
 
 // refresh chart data
@@ -44,70 +50,16 @@ function append_label_data(ivs) {
 // chart literal
 var c = {
 
-  samples : 50,
+  samples : 96,
 
   chart : null,
 
   type : "Line",
 
   options : {
+    responsive : true, 
     animation : false,
-    animationSteps: 60,
-    animationEasing: "easeOutQuart",
-    showScale: true,
-    scaleOverride: false,
-    scaleSteps: null,
-    scaleStepWidth: null,
-    scaleStartValue: null,
-    scaleLineColor: "rgba(0,0,0,.1)",
-    scaleLineWidth: 1,
-    scaleShowLabels: true,
-    scaleLabel: "<%=value%>",
-    scaleIntegersOnly: true,
-    scaleBeginAtZero: false,
-    scaleFontFamily: "'Helvetica Neue', 'Helvetica', 'Arial', sans-serif",
-    scaleFontSize: 12,
-    scaleFontStyle: "normal",
-    scaleFontColor: "#666",
-    responsive: false,
-    maintainAspectRatio: true,
-    showTooltips: true,
-    customTooltips: false,
-    tooltipEvents: ["mousemove", "touchstart", "touchmove"],
-    tooltipFillColor: "rgba(0,0,0,0.8)",
-    tooltipFontFamily: "'Helvetica Neue', 'Helvetica', 'Arial', sans-serif",
-    tooltipFontSize: 14,
-    tooltipFontStyle: "normal",
-    tooltipFontColor: "#fff",
-    tooltipTitleFontFamily: "'Helvetica Neue', 'Helvetica', 'Arial', sans-serif",
-    tooltipTitleFontSize: 14,
-    tooltipTitleFontStyle: "bold",
-    tooltipTitleFontColor: "#fff",
-    tooltipYPadding: 6,
-    tooltipXPadding: 6,
-    tooltipCaretSize: 8,
-    tooltipCornerRadius: 6,
-    tooltipXOffset: 10,
-    tooltipTemplate: "<%if (label){%><%=label%>: <%}%><%= value %>",
-    multiTooltipTemplate: "<%= value %>",
-    onAnimationProgress: function(){},
-    onAnimationComplete: function(){},
-
-    scaleShowGridLines : true,
-    scaleGridLineColor : "rgba(0,0,0,.05)",
-    scaleGridLineWidth : 1,
-    scaleShowHorizontalLines: true,
-    scaleShowVerticalLines: true,
-    bezierCurve : false,
-    bezierCurveTension : 0.4,
-    pointDot : true,
-    pointDotRadius : 4,
-    pointDotStrokeWidth : 1,
-    pointHitDetectionRadius : 20,
-    datasetStroke : true,
-    datasetStrokeWidth : 2,
-    datasetFill : true,
-    legendTemplate : "<ul class=\"<%=name.toLowerCase()%>-legend\"><% for (var i=0; i<datasets.length; i++){%><li><span style=\"background-color:<%=datasets[i].strokeColor%>\"></span><%if(datasets[i].label){%><%=datasets[i].label%><%}%></li><%}%></ul>",
+    bezierCurve : false
   },
 
   data : {

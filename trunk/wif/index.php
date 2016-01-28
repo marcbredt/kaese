@@ -10,7 +10,7 @@
 </head>
 
 <body style="margin:0px;padding:0px;font-family:Verdana,Helvetica;
-             font-size:12px;background-color:#0202b8;height:100%">
+             font-size:12px;height:100%">
 
   <div name="main" id="main" 
        style="width:100%;height:100vh;margin:0px;padding:0px;border:0px solid orange;"> 
@@ -24,7 +24,6 @@
         <td><a id="a_config" style="color:#ffffff;font-weight:bold;" href="config">config</a></td>
         <td><a id="a_stats" style="color:#ffffff;font-weight:bold;" href="stats">stats</a></td>
         <td><a id="a_about" style="color:#ffffff;font-weight:bold;" href="about">about</a></td>
-        <td><a id="a_license" style="color:#ffffff;font-weight:bold;" href="license">license</a></td>
       </tr>
     </table>
   </div>
