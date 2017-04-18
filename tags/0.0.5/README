@@ -1,0 +1,108 @@
+Notes
+---
+This tool is a netfilter frontend. It reads rulesets from
+configuration files and can be used to setup iptables rules
+for different interfaces using specified network definitions
+from /etc/network/interfaces.
+
+Configuration structure
+---
+rulesets = ruleset*
+ruleset = rule*
+rule = attributes*
+
+Attributes
+---
+active - define a a ruleset/rule as active
+atype - address type passed onto netfilter
+chain - specify to store a rule in, chains will be created if they do not exist
+condition - specify a condition on any internal variable 
+destination - destination address
+dports - destination ports
+if-in - input nterface
+if-out - output interface
+log - enable logging
+log-level - set log level to e.g. combine it with rsyslogd config/filters
+log-prefix - sets log prefix
+name - name rulesets to access them on initition
+protocol - define the protcol (tcp,udp,icmp,all)
+ruleset - call another ruleset if it exists
+source - source address 
+sports - source ports
+state - define acceptable states
+table - define a table to place a rule into (default=filter)
+target - chain targets, e.g. ACCEPT,MASQUERADE
+
+Modifying CHANGELOG
+---
+$ export DEBFULLNAME="Marc Bredt"; export DEBEMAIL="marc.bredt@gmail.com"
+$ dch -c trunk/CHANGELOG --package kaese --distribution stable --create -v 0.0.2
+$ dch -c trunk/CHANGELOG -r
+$ dch -c trunk/CHANGELOG -i
+
+Providing access to iptables logfiles for statistics
+---
+* via rsyslogd, user group kaese got read access
+
+  $ cat /etc/rsyslod.d/iptables.conf
+  :msg, contains, "iptables: " action(type="omfile" DirCreateMode="0750" 
+                                      DirOwner="root" DirGroup="kaese" 
+                                      FileCreateMode="0640" FileOwner="root" 
+                                      FileGroup="kaese" 
+                                      File="/var/log/kaese/iptables.log")
+  :msg, contains, "iptables: " ~
+  kern.=debug action(type="omfile" DirCreateMode="0750" DirOwner="root" 
+                     DirGroup="kaese" FileCreateMode="0640" FileOwner="root" 
+                     FileGroup="kaese" File="/var/log/kaese/iptables.log")
+  kern.=debug ~
+
+  $ ll /var/log/kaese/
+  123   4 drwxr-x---  2 root kaese   4096 Jan  3 15:30 .
+  456  12 drwxr-xr-x 20 root root   12288 Jan  3 15:30 ..
+  789 164 -rw-r-----  1 root kaese 161397 Jan  3 16:22 iptables.log
+
+Providing access to iptables command for statistics
+---
+* via sudo,calife,chiark-really
+  * bind a limited amount of parameters for iptables onto sudo calls
+  
+  $ cat /etc/sudoers
+  #
+  # This file MUST be edited with the 'visudo' command as root.
+  # 
+  # Please consider adding local content in /etc/sudoers.d/ instead of
+  # directly modifying this file.
+  #
+  # See the man page for details on how to write a sudoers file.
+  #
+  Defaults        env_reset
+  Defaults        mail_badpass
+  Defaults        secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+  # Host alias specification
+  Host_Alias HOST_ALIAS_KAESE = localhost
+
+  # User alias specification
+  User_Alias USER_ALIAS_KAESE = %kaese
+
+  # Cmnd alias specification
+  Cmnd_Alias CMND_ALIAS_KAESE_IPT_LIST_FILTER = /sbin/iptables -t filter -nv --list, /sbin/iptables -t filter -nv --list [[\:alpha\:]]*
+  Cmnd_Alias CMND_ALIAS_KAESE_IPT_LIST_NAT = /sbin/iptables -t nat -nv --list, /sbin/iptables -t nat -nv --list [[\:alpha\:]]*
+
+  # User privilege specification
+  root    ALL=(ALL:ALL) ALL
+
+  # Allow members of group sudo to execute any command
+  %sudo   ALL=(ALL:ALL) ALL
+  USER_ALIAS_KAESE        HOST_ALIAS_KAESE = NOPASSWD: CMND_ALIAS_KAESE_IPT_LIST_FILTER, CMND_ALIAS_KAESE_IPT_LIST_NAT
+
+  # See sudoers(5) for more information on "#include" directives:
+
+  #includedir /etc/sudoers.d
+
+* via php's exec/escapeshell*/shell_exec/system etc.
+
+Further usage ideas
+---
+* pattern matching for internet activities
+

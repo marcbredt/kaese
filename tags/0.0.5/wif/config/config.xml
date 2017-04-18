@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<config>
+  <var name="user">kaese-mod</var>
+  <var name="logfile">/var/log/kaese/iptables.log</var>
+  <var name="sudo">/usr/bin/sudo</var>
+  <var name="ipt-filter">/sbin/iptables -t filter -nvx --list</var>
+  <var name="ipt-nat">/sbin/iptables -t nat -nvx --list</var>
+  <var name="refresh">3</var>
+  <var name="autoadjust">false</var>
+</config>
