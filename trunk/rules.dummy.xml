@@ -146,6 +146,100 @@
 
   <!-- OTHERS -->
 
+  <!-- docker -->
+  <!-- TODO: check for presence of docker container when grabbing ipv4addresses from the docker network -->
+  <ruleset active="y" name="docker" nested="n">
+    <!-- filter -->
+    <rule active="y" chain="output-docker" if-out="docker1" 
+          source="$(docker network inspect -f '{{range .IPAM.Config}}{{.Subnet}}{{end}}' DCNTPLACEHOLDER)"
+          destination="$(docker network inspect -f '{{range .IPAM.Config}}{{.Subnet}}{{end}}' DCNTPLACEHOLDER)"
+          target="ACCEPT" log="y" log-level="debug" log-prefix="iptables: [DCR OUT]: "/>
+    <rule active="y" chain="input-docker" if-in="docker1" 
+          source="$(docker network inspect -f '{{range .IPAM.Config}}{{.Subnet}}{{end}}' DCNTPLACEHOLDER)" 
+          destination="$(docker network inspect -f '{{range .IPAM.Config}}{{.Subnet}}{{end}}' DCNTPLACEHOLDER)" 
+          target="ACCEPT" log="y" log-level="debug" log-prefix="iptables: [DCR IN]: "/>
+    <rule active="y" chain="forward-docker-isolation" if-in="docker1" if-out="docker0" 
+          target="DROP" log="y" log-level="debug" log-prefix="iptables: [DCR ISO FWD]: "/>
+    <rule active="y" chain="forward-docker-isolation" if-in="docker0" if-out="docker1"
+          target="DROP" log="y" log-level="debug" log-prefix="iptables: [DCR ISO FWD]: "/>
+    <rule active="y" chain="forward-docker-isolation" target="RETURN" log="y" 
+          log-level="debug" log-prefix="iptables: [DCR ISO FWD]: "/>
+    <rule active="y" chain="forward-docker-services" protocol="tcp" if-in="!docker1" 
+          if-out="docker1" destination="$(docker network inspect -f '{{range .Containers}}{{if eq .Name &quot;DCNTPLACEHOLDER&quot;}}{{.IPv4Address}}{{end}}{{end}}' DCNTPLACEHOLDER | cut -d'/' -f1)" 
+          dports="1111,2222,3333" target="ACCEPT" log="y" log-level="debug" 
+          log-prefix="iptables: [DCR MOQ FWD]: "/>
+    <rule active="y" chain="forward-docker-services" protocol="tcp" if-in="!docker1" if-out="docker1" 
+          destination="$(docker network inspect -f '{{range .Containers}}{{if eq .Name &quot;DCNTPLACEHOLDER&quot;}}{{.IPv4Address}}{{end}}{{end}}' DCNTPLACEHOLDER | cut -d'/' -f1)" 
+          dports="4444" target="ACCEPT" log="y" log-level="debug" 
+          log-prefix="iptables: [DCR ADM FWD]: "/>
+    <rule active="y" chain="forward-docker-services" protocol="tcp" if-in="!docker1"
+          if-out="docker1" destination="$(docker network inspect -f '{{range .Containers}}{{if eq .Name &quot;DCNTPLACEHOLDER&quot;}}{{.IPv4Address}}{{end}}{{end}}' DCNTPLACEHOLDER | cut -d'/' -f1)" 
+          dports="5555" target="ACCEPT" log="y" log-level="debug" log-prefix="iptables: [DCR DB FWD]: "/>
+    <rule active="y" chain="forward-docker-services" protocol="tcp" if-in="!docker1" 
+          if-out="docker1" 
+          destination="$(docker network inspect -f '{{range .Containers}}{{if eq .Name &quot;DCNTPLACEHOLDER&quot;}}{{.IPv4Address}}{{end}}{{end}}' DCNTPLACEHOLDER | cut -d'/' -f1)" 
+          dports="6666" target="ACCEPT" log="y" log-level="debug" 
+          log-prefix="iptables: [DCR WIF FWD]: "/>
+    <rule active="y" chain="forward-docker" target="forward-docker-isolation"/>
+    <rule active="y" chain="forward-docker" if-out="docker1" 
+          target="forward-docker-services"/>
+    <rule active="y" chain="forward-docker" if-out="docker1" state="RELATED,ESTABLISHED" 
+          target="ACCEPT" log="y" log-level="debug" log-prefix="iptables: [DCR FWD]: "/>
+    <rule active="y" chain="forward-docker" if-in="docker1" if-out="!docker1" 
+          target="ACCEPT" log="y" log-level="debug" log-prefix="iptables: [DCR FWD]: "/>
+    <rule active="y" chain="forward-docker" if-in="docker1" if-out="docker1" target="ACCEPT"
+          log="y" log-level="debug" log-prefix="iptables: [DCR FWD]: "/>
+    <!-- nat -->
+    <rule active="y" table="nat" chain="prerouting-docker-services" if-in="docker0" 
+          target="RETURN" log="n" log-level="debug" log-prefix="iptables: [DCR NAT RET]: "/>
+    <rule active="y" table="nat" chain="prerouting-docker-services" if-in="docker1" 
+          target="RETURN" log="n" log-level="debug" log-prefix="iptables: [DCR NAT RET]: "/>
+    <rule active="y" table="nat" chain="prerouting-docker-services" protocol="tcp" if-in="!docker1" 
+          target="DNAT:$(docker network inspect -f '{{range .Containers}}{{if eq .Name &quot;DCNTPLACEHOLDER&quot;}}{{.IPv4Address}}{{end}}{{end}}' DCNTPLACEHOLDER | cut -d'/' -f1)" 
+          dports="5555" log="n" log-level="debug" log-prefix="iptables: [DCR DNAT DB]: "/>
+    <rule active="y" table="nat" chain="prerouting-docker-services" protocol="tcp" if-in="!docker1" 
+          target="DNAT:$(docker network inspect -f '{{range .Containers}}{{if eq .Name &quot;DCNTPLACEHOLDER&quot;}}{{.IPv4Address}}{{end}}{{end}}' DCNTPLACEHOLDER | cut -d'/' -f1)" 
+          dports="4444" log="n" log-level="debug" log-prefix="iptables: [DCR DNAT ADM]: "/>
+    <rule active="y" table="nat" chain="prerouting-docker-services" protocol="tcp" if-in="!docker1" 
+          target="DNAT:$(docker network inspect -f '{{range .Containers}}{{if eq .Name &quot;DCNTPLACEHOLDER&quot;}}{{.IPv4Address}}{{end}}{{end}}' DCNTPLACEHOLDER | cut -d'/' -f1)" 
+          dports="1111,2222,3333" log="n" log-level="debug" log-prefix="iptables: [DCR DNAT MOQ]: "/>
+    <rule active="y" table="nat" chain="prerouting-docker-services" protocol="tcp" if-in="!docker1" 
+          target="DNAT:$(docker network inspect -f '{{range .Containers}}{{if eq .Name &quot;DCNTPLACEHOLDER&quot;}}{{.IPv4Address}}{{end}}{{end}}' DCNTPLACEHOLDER | cut -d'/' -f1)" 
+          dports="6666" log="n" log-level="debug" log-prefix="iptables: [DCR DNAT WIF]: "/>
+    <rule active="y" table="nat" chain="prerouting-docker" atype=":LOCAL" 
+          target="prerouting-docker-services" log="n" log-level="debug" 
+          log-prefix="iptables: [DCR NAT PRE]: "/>
+    <rule active="y" table="nat" chain="output-docker" atype=":LOCAL" 
+          destination="!127.0.0.0/8" target="prerouting-docker-services" log="n" 
+          log-level="debug" log-prefix="iptables: [DCR NAT OUT]: "/>
+    <rule active="y" table="nat" chain="postrouting-docker" if-out="!docker0" 
+          source="$(docker network inspect -f '{{range .IPAM.Config}}{{.Subnet}}{{end}}' DCNTPLACEHOLDER)" 
+          target="MASQUERADE" log="n" log-level="debug" log-prefix="iptables: [DCR NAT POST]: "/>
+    <rule active="y" table="nat" chain="postrouting-docker" if-out="!docker1" 
+          source="$(docker network inspect -f '{{range .IPAM.Config}}{{.Subnet}}{{end}}' DCNTPLACEHOLDER)" 
+          target="MASQUERADE" log="n" log-level="debug" log-prefix="iptables: [DCR NAT POST]: "/>
+    <rule active="y" table="nat" chain="postrouting-docker" protocol="tcp" 
+          source="$(docker network inspect -f '{{range .Containers}}{{if eq .Name &quot;DCNTPLACEHOLDER&quot;}}{{.IPv4Address}}{{end}}{{end}}' DCNTPLACEHOLDER | cut -d'/' -f1)" 
+          destination="$(docker network inspect -f '{{range .Containers}}{{if eq .Name &quot;DCNTPLACEHOLDER&quot;}}{{.IPv4Address}}{{end}}{{end}}' DCNTPLACEHOLDER | cut -d'/' -f1)"
+          dports="5555" target="MASQUERADE" log="n" log-level="debug" 
+          log-prefix="iptables: [DCR NAT POST]: "/>
+    <rule active="y" table="nat" chain="postrouting-docker" protocol="tcp" 
+          source="$(docker network inspect -f '{{range .Containers}}{{if eq .Name &quot;DCNTPLACEHOLDER&quot;}}{{.IPv4Address}}{{end}}{{end}}' DCNTPLACEHOLDER | cut -d'/' -f1)" 
+          destination="$(docker network inspect -f '{{range .Containers}}{{if eq .Name &quot;DCNTPLACEHOLDER&quot;}}{{.IPv4Address}}{{end}}{{end}}' DCNTPLACEHOLDER | cut -d'/' -f1)" 
+          dports="4444" target="MASQUERADE" log="n" log-level="debug" 
+          log-prefix="iptables: [DCR NAT POST]: "/>
+    <rule active="y" table="nat" chain="postrouting-docker" protocol="tcp" 
+          source="$(docker network inspect -f '{{range .Containers}}{{if eq .Name &quot;DCNTPLACEHOLDER&quot;}}{{.IPv4Address}}{{end}}{{end}}' DCNTPLACEHOLDER | cut -d'/' -f1)"
+          destination="$(docker network inspect -f '{{range .Containers}}{{if eq .Name &quot;DCNTPLACEHOLDER&quot;}}{{.IPv4Address}}{{end}}{{end}}' DCNTPLACEHOLDER | cut -d'/' -f1)"
+          dports="1111,2222,3333" target="MASQUERADE" log="n" log-level="debug"
+          log-prefix="iptables: [DCR NAT POST]: "/>
+    <rule active="y" table="nat" chain="postrouting-docker" protocol="tcp" 
+          source="$(docker network inspect -f '{{range .Containers}}{{if eq .Name &quot;DCNTPLACEHOLDER&quot;}}{{.IPv4Address}}{{end}}{{end}}' DCNTPLACEHOLDER | cut -d'/' -f1)"
+          destination="$(docker network inspect -f '{{range .Containers}}{{if eq .Name &quot;DCNTPLACEHOLDER&quot;}}{{.IPv4Address}}{{end}}{{end}}' DCNTPLACEHOLDER | cut -d'/' -f1)"
+          dports="6666" target="MASQUERADE" log="n" log-level="debug" 
+          log-prefix="iptables: [DCR NAT POST]: "/>
+  </ruleset>
+
   <!-- log_others -->
   <ruleset active="y" name="log_others">
     <rule active="y" chain="INPUT" target="" 

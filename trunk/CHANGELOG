@@ -1,12 +1,16 @@
-kaese (0.0.5) UNRELEASED; urgency=medium
+kaese (0.0.5) stable; urgency=medium
 
+  * nested rule creation can be disabled using a ruleset's "nested" attribute
+  * ip gathering procedure now trims the subnet mask
+  * negation of destination and source now possible using th "!" operator
+  * dummy rules for a sample docker environment added
   * Proof of concept for a webinterface to visualize some iptables 
     statistics laterwards.
   * Adding attribute 'enabled' through xmlstarlet to mark rulesets 
     currently in use. Determined through the webinterface.  
   * Option 'down' now simply invokes a quit after reset.
 
- -- Marc Bredt <marc.bredt@gmail.com>  Sun, 03 Jan 2016 16:14:57 +0100
+ -- Marc Bredt <marc.bredt@taskit.de>  Tue, 18 Apr 2017 15:32:28 +0200
 
 kaese (0.0.4) stable; urgency=medium
 

@@ -102,6 +102,7 @@ create_chains(){
 
   local table="${1}"
   local chain="${2}"
+  local nested="${3}"
 
   local parent="${chain%%-*}"
   local childs="${chain#${parent}}"
@@ -124,8 +125,10 @@ create_chains(){
 
         # otherwise insert a jump for the target 'as is'
         else
-          ${IPTABLES} -t ${table} -A ${parent} -j ${nc}
-
+          if [ "x${nested}" = "xy" ]; then 
+            ${IPTABLES} -t ${table} -A ${parent} -j ${nc}; 
+          fi
+        
         fi
 
     fi
@@ -174,9 +177,12 @@ set_rules() {
   local ruleset=$(/usr/bin/xmlstarlet select -t -c "//ruleset[@active='y' and @name='${protv}']" "${rules}")
   local rsn=
   local rsc=
+  local nested=
   if [ "x${ruleset}" != "x" ]; then
     rsn=$(echo ${ruleset} | /usr/bin/xmlstarlet select -t -v "count(//rule)")
     rsc=$(echo ${ruleset} | /usr/bin/xmlstarlet select -t -v "/ruleset/@condition")
+    nested=$(echo ${ruleset} | /usr/bin/xmlstarlet select -t -v "/ruleset/@nested") 
+    if [ "x${nested}" = "x" ]; then nested="y"; fi
   fi
   if [ "x${rsc}" != "x" ]; then eval "${rsc%%:*}_=${rsc##*:}"; fi
 
@@ -193,7 +199,6 @@ set_rules() {
       # used to check if the rule points to another existing ruleset 
       local rrs=$(echo ${ruleset} | /usr/bin/xmlstarlet select -t \
                                       -v "/ruleset/rule[${i}][@active='y']/@ruleset")
-
       if [ "x${rrs}" = "x" ]; then
 
         local rule=$(echo ${ruleset} | /usr/bin/xmlstarlet select -t \
@@ -210,7 +215,16 @@ set_rules() {
           local atype=$(echo ${rule} | /usr/bin/xmlstarlet select -t -v "//@atype")
           local atype_src=${atype%%:*}; local atype_dst=${atype##*:}
           local sources=$(echo ${rule} | /usr/bin/xmlstarlet select -t -v "//@source")
+          if [[ "${sources}" =~ ^ip-iface-.*$ ]]; then 
+            sources=$(/sbin/ip addr show ${sources##*-} | /bin/grep inet | \
+                      /usr/bin/head -1 | /usr/bin/awk '{print $2;}' | \
+                      /usr/bin/cut -d'/' -f1)
+          fi
           local destinations=$(echo ${rule} | /usr/bin/xmlstarlet select -t -v "//@destination")
+          if [[ "${destinations}" =~ ^ip-iface-.*$ ]]; then 
+            destinations=$(/sbin/ip addr show ${destinations##*-} | /bin/grep inet | \
+                           /usr/bin/head -1 | /usr/bin/awk '{print $2;}')
+          fi
           local dports=$(echo ${rule} | /usr/bin/xmlstarlet select -t -v "//@dports")
           local sports=$(echo ${rule} | /usr/bin/xmlstarlet select -t -v "//@sports")
           local state=$(echo ${rule} | /usr/bin/xmlstarlet select -t -v "//@state")
@@ -220,22 +234,34 @@ set_rules() {
           local logprefix=$(echo ${rule} | /usr/bin/xmlstarlet select -t -v "//@log-prefix")
 
           # auto create chain and auto pin by chain name prefix        
-          if [ "x${chain}" != "x" ]; then create_chains ${table} ${chain}; fi
+          if [ "x${chain}" != "x" ]; then create_chains ${table} ${chain} ${nested}; fi
 
           # create the main rule command
           local cmd="${IPTABLES} -t ${table} -A ${chain}"
 
           if [ "x${protocol}" != "x" ]; then cmd="${cmd} -p ${protocol}"; fi
 
-          if [ "x${if_in}" != "x" ]; then cmd="${cmd} -i ${if_in}"; fi
-          if [ "x${if_out}" != "x" ]; then cmd="${cmd} -o ${if_out}"; fi
+          if [ "x${if_in}" != "x" ]; then 
+            if [[ "${if_in}" =~ ^\! ]]; then cmd="${cmd} ! -i ${if_in:1}";
+            else cmd="${cmd} -i ${if_in}"; fi
+          fi
+          if [ "x${if_out}" != "x" ]; then 
+            if [[ "${if_out}" =~ ^\! ]]; then cmd="${cmd} ! -o ${if_out:1}";
+            else cmd="${cmd} -o ${if_out}"; fi
+          fi
 
           if [ "x${atype}" != "x" ]; then cmd="${cmd} -m addrtype"; fi
           if [ "x${atype_src}" != "x" ]; then cmd="${cmd} --src-type ${atype_src}"; fi
           if [ "x${atype_dst}" != "x" ]; then cmd="${cmd} --dst-type ${atype_dst}"; fi
 
-          if [ "x${sources}" != "x" ]; then cmd="${cmd} --source ${sources}"; fi
-          if [ "x${destinations}" != "x" ]; then cmd="${cmd} --destination ${destinations}"; fi
+          if [ "x${sources}" != "x" ]; then 
+            if [[ "${sources}" =~ ^\! ]]; then cmd="${cmd} ! --source ${sources:1}";
+            else cmd="${cmd} --source ${sources}"; fi
+          fi
+          if [ "x${destinations}" != "x" ]; then
+            if [[ "${destinations}" =~ ^\! ]]; then cmd="${cmd} ! --destination ${destinations:1}";
+            else cmd="${cmd} --destination ${destinations}"; fi
+          fi
 
           if [ "x${sports}" != "x" ]; then cmd="${cmd} -m multiport --sports ${sports}"; fi
           if [ "x${dports}" != "x" ]; then cmd="${cmd} -m multiport --dports ${dports}"; fi
@@ -275,7 +301,7 @@ set_rules() {
 
     done
 
-    # add marker to be able to determine which rules currently set
+    # add marker to be able to determine which rules are currently set
     /usr/bin/xmlstarlet edit -L -i "/rulesets/ruleset[@name='${protv}']" \
                              -t "attr" -n "enabled" -v "y" "${rules}"
 
@@ -404,6 +430,7 @@ done
 #       see used rules.xml <ruleset condition="SCRIPTVAR:VALUE">
 # log all other packets
 set_rules "log_others"
-# and reject them
-set_rules "reject"
+# and drop/reject them
+set_rules "drop" # better drop to avoid response traffic 
+#set_rules "reject" 
 
